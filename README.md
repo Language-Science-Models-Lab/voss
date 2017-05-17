@@ -24,6 +24,7 @@ Setting up simulations
 if you need more information on how the program works.)
 
 PARAMETERS / COMMANDS
+
 *run* 
 
 Starts a new game with current settings. No arguments needed. 
