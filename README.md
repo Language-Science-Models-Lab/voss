@@ -1,7 +1,7 @@
 # voss
 Complex system model of language change
 
-CITE AS
+CITE AS  
 hjmscott. (2017). Language-Science-Models-Lab/voss: First public release of VoSS [Data set]. Zenodo. http://doi.org/10.5281/zenodo.582663
 
 GETTING STARTED
