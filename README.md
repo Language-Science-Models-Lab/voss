@@ -1,6 +1,9 @@
 # voss
 Complex system model of language change
 
+CITE AS
+hjmscott. (2017). Language-Science-Models-Lab/voss: First public release of VoSS [Data set]. Zenodo. http://doi.org/10.5281/zenodo.582663
+
 GETTING STARTED
 Installation and libraries
 You'll need Python 3.4+ to run VoSS
