@@ -201,7 +201,7 @@ class Phonology:
 		if ma is greater than 0, it will be random from [mi, ma]
 		if no ma amount is specified, it will use mi
 		'''
-		e1_adj = edge_adj(max_e1, v.e1)
+		e1_adj = edge_adj(min_e1, v.e1)
 		if ma:
 			amount = uniform(mi, ma) * e1_adj #goes to 0 at edges
 		else:
