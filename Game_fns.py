@@ -2,15 +2,15 @@
 Vowel evolution program driver.
 Run in PYTHON 3 (!)
 with Vowel, Prototype, Word, Agent, Convention, graphics files in same directory
-
 import time, random, re from Python library
-Last update February 2017 HJMS
+Last update July 2017 HJMS
 
 HOW TO RUN
 Use 'run' (f5) from IDLE, or
 execute this file while the others^ are in same directory, or use
 $python3 Game_fns.py
-in Linux (Python3 and TKinter must be installed)
+ in Linux. 
+Python3 and TKinter must be installed
 
 The menu will print defaults and the commands you can enter at the prompt.
 Use 'demo' if it's your first time and you want to be walked through setup of a game.
@@ -36,8 +36,8 @@ class Game_fns:
 		self.total_interactions = 0
 		self.num_cycles = 1						#cycle = follow a group from introduction to removal i.e. birth to death
 		self.cycle_lim = self.num_cycles
-		self.population_max = 300				#population control
-		self.age_limit = 30						#Age at which agents are removed.
+		self.population_max = 200				#population control
+		self.age_limit = 60						#Age at which agents are removed.
 		al = self.age_limit						
 		self.max_groups = al					#max length of self.population	
 		pm = self.population_max				#population won't grow beyond this size
@@ -48,9 +48,9 @@ class Game_fns:
 		self.length_flag = True					#True -> all agents discriminate long vs short vowels
 		self.pause_time = 1						#number of seconds to show step reports (0 to wait for click)
 		self.perception = .75					  #margin within which agents recognize matches (uniform and static for all agents)				
-		self.phone_radius = .5					   #margin within which agents form internal representation
-		self.phone_radius_noise = .5			   #margin within which agents produce their internal representation when speaking
-		self.prox = -5						   #controls the sensitivity of vowels in agent's reps
+		self.phone_radius = 0.25				 #margin within which agents form internal representation
+		self.phone_radius_noise = .5			#margin within which agents produce their internal representation when speaking
+		self.prox = 1.5						   #controls the sensitivity of vowels in agent's reps
 		#PROX NOTE: prox is in ERB units and is added to vowel.weight
 		
 		self.adapt_perc = 0						#amount agents modify perception from feedback (0 will disable)
@@ -59,7 +59,7 @@ class Game_fns:
 		self.lang_fn = "english"
 		self.base = self.languages[self.lang_fn]   #base convention, which can be overwritten in the menu interface
 
-		self.lex_size = 75					   #override the Convention default
+		self.lex_size = 25					   #override the Convention default
 		self.convention = Convention.Convention(self.show, self.color_on, self.lex_size)  #Convention tracks the prototypes
 		self.convention.str_to_protos(self.base)#Convention reads in a string and splits into keys
 		self.use_ipa_symbols = True
@@ -72,9 +72,9 @@ class Game_fns:
 
 		self.age_adult = int(self.age_limit/10) + 1		#at 10% lifespan, agents purge their vowels and stop listening
 		
-		self.contact_agents = 5	   #limit on number of "non-family" agents a listener hears at each step
-		self.contact_words = 15		#limit on how many words a listener heard from each "non-family" contact at each step
-		self.fam_size = 15
+		self.contact_agents = 50	   #limit on number of "non-family" agents a listener hears at each step
+		self.contact_words = 10		#limit on how many words a listener heard from each "non-family" contact at each step
+		self.fam_size = 4
 		self.micro = False
 		self.micro_agent = None
 		
@@ -86,6 +86,7 @@ class Game_fns:
 		self.curr_cycle = 0
 		self.str_buf = []
 		
+		self.armchair_var = True
 		
 		'''
 		SOME NOTES ON THE MARGIN MECHANICS
@@ -363,7 +364,10 @@ class Game_fns:
 	def transmit(self, agent, n):
 		'''signals a word n to agent'''
 		self.total_interactions += 1
-		im = agent.call_matchers(n)
+		if self.armchair_var:
+			im = agent.call_matchers(n)
+		else:
+			im = agent.call_matchers_nh(n)
 		return
 
 	
@@ -409,6 +413,8 @@ class Game_fns:
 		if a >= age_lim:
 			d = popul.pop(0)
 			self.total_agents -= len(d)	   
+			del d
+			
 			if(popul[0][0].age >= (age_lim - 1)):  
 				self.curr_cycle += 1
 				if self.show:
@@ -576,6 +582,7 @@ class Game_fns:
 			c.plot_sets(all_reps, self.pause_time, s)
 			if (self.micro and self.micro_agent):
 				c.plot_micro(self.micro_agent)
+		del all_reps
 		return 1
 
 	
@@ -614,6 +621,7 @@ class Game_fns:
 			c.plot_sets(all_reps, self.pause_time, s)
 			if (self.micro and self.micro_agent):
 				c.plot_micro(self.micro_agent)
+		del all_reps
 		return 1
 		
 
@@ -791,7 +799,7 @@ class Game_fns:
 
 
 ######## TEXT-ONLY		  
-	def shifting_report(self):
+	def shifting_report(self, lang = ""):
 		'''
 		Prints a table listing the convention's Prototypes.
 		Shows the IPA formant values,
@@ -833,8 +841,25 @@ class Game_fns:
 			print(si)
 
 		s_out = "\n".join(s_out_li)
-		self.str_buf.append(s_out)
+		#self.str_buf.append(s_out)
+		
+		if lang:
+			fn = self.file_name(lang)+".txt"
+		else:
+			fn = ctime().replace(" ", "_")+".txt"
+			fn = fn.replace(":", "")
+			
+		print("Saving to file", fn)
+		
+		f = open(fn, "a")
+		f.write(s_out)
+		f.close()
+		
+		del s_out
+		
 		return 1
+		
+		
 		
 	def margin_report(self, g):
 		'''
@@ -849,6 +874,8 @@ class Game_fns:
 		print("Perception: ", ("%.4f" % avg_perc))
 		return 1
 	
+	
+	
 	def lexicon_report(self):
 		'''
 		Called by the 'report' command.
@@ -862,6 +889,8 @@ class Game_fns:
 		#print(s_h)
 		#self.find_sound_changes()
 		return 1
+
+
 
 	def find_sound_changes(self):
 		'''
@@ -1373,7 +1402,7 @@ class Game_fns:
 			p = w.percept
 			ap = gbm(p)
 			a.repertoire.append(ap)
-			a.idio[word] = Word.Word(w.onset, w.nucles, w.coda, ap)
+			a.idio[word] = Word.Word(w.onset, w.nucleus, w.coda, ap)
 		print("Exposing population to new word . . .")
 		self.diffuse()
 		self.population.pop(0)
@@ -1663,11 +1692,25 @@ class Game_fns:
 		self.micro = not self.micro
 		print("Micro mode", self.micro)
 		return 1
+		
+	
+	
+	def switch_armchair_var(self, more = False):
+		if more:
+			print("'Armchair-inspired Agents' form their repertoires as babies.")
+			print("After their first step is complete, they learn words and map them to phones.")
+			print("Children do not alter their repertoires directly at all.")
+			print("When this is turned off, children continue to use the perceptual margin.")
+		self.armchair_var = not self.armchair_var
+		print("'Armchair Mode' set to", self.armchair_var)
+		return 1
+		
 
 #################################
-#								#
-# PHONOLOGY THEORY-SWAPPING		#
-#								#
+#				#
+# PHONOLOGY THEORY-SWAPPING     #
+#  *Not actively maintained     #
+#				#
 #################################
 
 	def golston_presets(self):
@@ -1961,13 +2004,105 @@ class Game_fns:
 			fn = ctime().replace(" ", "_")+".txt"
 			fn = fn.replace(":", "")
 		print("Saving to file", fn)
-		f = open(fn, "w")
+		f = open(fn, "a")
 		s_label = "\n".join(sl)
 		self.str_buf.insert(0, s_label)
 		out = "\n".join(self.str_buf)
 		f.write(out)
 		f.close()
+		del sl
 		return 1
+		
+		
+		
+	def build_archive(self, l = None):
+		'''
+		Use to test different parameters on the same language
+		Saves eps and txt files documenting semi-automated simulations.
+	
+		Call from the menu by command "archive"
+		'''
+		g = self
+		if not l:
+			lang = input("Enter Language: ")
+		cycle_inc = 2	#CYCLE INCREMENT: NUMBER OF CYCLES BETWEEN IMAGE CAPTURES
+		total_cc = 100 #TOTAL NUMBER OF CYCLES (will be divided by num_cycles for loop)
+		if cycle_inc > total_cc:
+			print("cycle increment > total cycles!")
+		
+		perc0 = g.perception #default
+		perc_i = g.perception #increment
+		prox0 = g.prox #default
+		prox_i = .3 #inc
+		phone0 = g.phone_radius #default
+		phone_i = .35 #inc
+		v0 = g.phone_radius_noise #default
+		v_i = .35 #inc
+		fam0 = g.fam_size #default
+		fam_i = 1 #inc
+		friends0 = g.contact_agents #default
+		friends_i = 15 #inc
+		g.lex_size = g.lex_size
+		
+		# ("margin", perc_i), ("prox", prox_i), ("phone", phone_i), ("noise", v_i), ("family", fam_i), ("contacts", friends_i)
+		params = [("margin", perc_i)] # ("margin", perc_i), ("prox", prox_i), ("phone", phone_i), ("noise", v_i), ("family", fam_i), ("contacts", friends_i)] 
+		
+		print(ctime(), "-- Archiving results.")
+	
+			
+		for i in range(len(params)):
+			cmd, adj = params[i]
+			if cmd == "margin":
+				r = range(1, 2)
+			else:
+				r = range(4, 6)
+			for j in r:
+				g.show = False
+				conv = g.convention
+				#g.set_size(False, str(pop_lim))
+				g.base = g.languages[lang]
+	
+				g.perception = perc0
+				g.prox = prox0
+				g.phone_radius = phone0
+				g.phone_radius_noise = v0
+				g.fam_size = fam0
+				g.contact_agents = friends0
+				
+				options = settings_dict(g)
+				options[cmd](False, str(adj*j) ) #set the game parameter to j * adjustment
+				fs = str(g.fam_size)
+				cs = str(g.contact_agents)
+				conv.str_to_protos(g.base)
+				conv.strap_protos()
+			
+				g.strap_game(True)
+				g.summarize_param()
+				
+				pm = g.population_max
+				al = g.age_limit
+				g.draw_proto_margins(lang)
+			
+				print(ctime(), " -- Running", total_cc, "cycles total in", cycle_inc, "cycle increments using preset convention", lang)
+				while g.curr_cycle < total_cc:
+					inc_counter = g.curr_cycle + cycle_inc
+					gcc = g.curr_cycle
+					while gcc < inc_counter: 
+						g.step()
+						gcc = g.curr_cycle
+					g.set_sampling_method(0, "phones")
+					#g.shifting_report(lang)
+					g.write_images(lang+"P")
+					g.set_sampling_method(0, "vowels")
+					g.write_images(lang+"V")
+				
+				print("Finished", total_cc, "on", params, "at", ctime())
+				print(g.total_interactions, "interactions performed.")
+				g.count_word_vowels(0)
+				
+				g.write_report(lang)
+		print("Finished all combinations --", ctime())
+		return 2
 
 
 
@@ -2012,9 +2147,11 @@ def settings_dict(game):
 			'noise': game.set_prod_noise,
 			'sampling': game.set_sampling_method,
 			'phone': game.set_phone_radius,
-			'archive': build_archive,
+			'archive': game.build_archive,
 			'parchive': param_archive,
-			'symbols': game.switch_ipa_symbols
+			'symbols': game.switch_ipa_symbols,
+			'armchair': game.switch_armchair_var,
+			'lexicon': game.set_lex_size
 			}
 	return cmds
 
@@ -2024,7 +2161,7 @@ def menu():
 	'''User interface.'''
 	game = Game_fns()
 	game.print_param()
-	adj_li = ['cycles', 'size', 'show', 'margin', 'language', 'prox', 'lifespan', 'phone', 'noise', 'protos', 'sampling']
+	adj_li = ['cycles', 'size', 'show', 'margin', 'language', 'prox', 'lifespan', 'phone', 'noise', 'protos', 'sampling', 'armchair']
 	ctrl_li = ['run', 'stop', 'extend', 'details', 'report', 'save', 'draw margins', 'symbols']
 	help_li = ['?', 'demo']
 	
@@ -2118,6 +2255,7 @@ def menu_help():
 	print("charts: view the configured language presets.")
 	print("family: set the number of family members assigned to each agent")
 	print("sampling: use either 'phones' or 'vowels' for representing the speech community")
+	print("armchair: control whether child agents use perception")
 	return 1
 	
 
@@ -2131,95 +2269,6 @@ def show_profile():
 
 
 
-def build_archive(l = None):
-	'''
-	Use to test different parameters on the same language
-	Saves eps and txt files documenting semi-automated simulations.
-	
-	Call from the menu by command "archive"
-	'''
-	if not l:
-		lang = input("Enter Language: ")
-	cycle_inc = 1	#CYCLE INCREMENT: NUMBER OF CYCLES BETWEEN IMAGE CAPTURES
-	total_cc = 100 #TOTAL NUMBER OF CYCLES (will be divided by num_cycles for loop)
-	if cycle_inc > total_cc:
-		print("cycle increment > total cycles!")
-
-	g = Game_fns()
-	perc0 = g.perception #default
-	#perc_i = .75 #increment
-	prox0 = g.prox #default
-	#prox_i = .3 #inc
-	phone0 = g.phone_radius #default
-	#phone_i = .5 #inc
-	v0 = g.phone_radius_noise #default
-	#v_i = .5 #inc
-	fam0 = g.fam_size #default
-	#fam_i = 1 #inc
-	friends0 = g.contact_agents #default
-	#friends_i = 15 #inc
-
-	pop_lim = 300
-	
-	# ("margin", perc_i), ("prox", prox_i), ("phone", phone_i), ("noise", v_i), ("family", fam_i), ("contacts", friends_i)
-	params = [("margin", perc0)] #, ("prox", prox_i), ("phone", phone_i), ("noise", v_i), ("family", fam_i), ("contacts", friends_i)] 
-	
-	print(ctime(), "-- Archiving results.")
-
-		
-	for i in range(len(params)):
-		cmd, adj = params[i]
-		if cmd == "margin":
-			r = range(1, 2)
-		else:
-			r = range(3)
-		for j in r:
-			g.show = False
-			conv = g.convention
-			g.set_size(False, str(pop_lim))
-			g.base = g.languages[lang]
-
-			g.perception = perc0
-			g.prox = prox0
-			g.phone_radius = phone0
-			g.phone_radius_noise = v0
-			g.fam_size = fam0
-			g.contact_agents = friends0
-			
-			options = settings_dict(g)
-			options[cmd](False, str(adj*j) ) #set the game parameter to j * adjustment
-			fs = str(g.fam_size)
-			cs = str(g.contact_agents)
-			conv.str_to_protos(g.base)
-			conv.strap_protos()
-		
-			g.strap_game(True)
-			g.summarize_param()
-			
-			pm = g.population_max
-			al = g.age_limit
-			g.draw_proto_margins(lang)
-		
-			print(ctime(), " -- Running", total_cc, "cycles total in", cycle_inc, "cycle increments using preset convention", lang)
-			while g.curr_cycle < total_cc:
-				inc_counter = g.curr_cycle + cycle_inc
-				gcc = g.curr_cycle
-				while gcc < inc_counter: 
-					g.step()
-					gcc = g.curr_cycle
-				g.set_sampling_method(0, "phones")
-				g.shifting_report()
-				g.write_images(lang+"P")
-				g.set_sampling_method(0, "vowels")
-				g.write_images(lang+"v")
-			
-			print("Finished", total_cc, "on", params, "at", ctime())
-			print(g.total_interactions, "interactions performed.")
-			g.count_word_vowels(0)
-			
-			g.write_report(lang)
-	print("Finished all combinations --", ctime())
-	return 2
 	
 
 

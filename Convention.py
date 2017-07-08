@@ -3,7 +3,7 @@ Run with Vowel, Prototype, Game_fns, Agent, Word
 Also import time, random and graphics modules
 Last update February 2017 HJMS'''
 
-import Vowel, Prototype, time, random, Word, re, Agent
+import Vowel, Prototype, time, random, Word, re, Agent, Segment
 from graphics import *
 
 class Convention:
@@ -208,7 +208,8 @@ class Convention:
                     self.base_proto_dict[p] = np
             np.carriers = c
             #name = "{0}{1}{2:02d}".format(np.name, "-", 0)
-            new_word = W("-", np.name, "-", np)
+            null_seg = Segment.Segment("-", [])
+            new_word = W(null_seg, np.name, null_seg, np)
             self.lexicon[name] = (new_word)
             
         self.proto_label = False #label needs to be redrawn to include new prototype
@@ -217,10 +218,12 @@ class Convention:
 
 
     def f1f2_to_e1e2(self, f1, f2 = None):
-        ''' direct implementation of traunmuller formula to convert from hertz to ERB
+        '''
+        direct implementation of traunmuller formula to convert from hertz to ERB
         just converts a tuple (f1, f2) in hz to erb
         benefit is that it doesn't have to be a Vowel, just the values
-        >>>f1f2_to_e1e2(2400, 800) = (22.44472228978699, 13.58504853003826) '''
+        >>>f1f2_to_e1e2(2400, 800) = (22.44472228978699, 13.58504853003826) 
+        '''
         from math import log
     
         def conv(f):
@@ -417,10 +420,10 @@ class Convention:
         with a min lex size of fifty will produce a lexicon
         where each vowel has [10, 40] words.
         Each word is a unique combination of CVC
-        where each C (consonant) is a set of articulatory classifications
+        where each C (consonant) is a segment
+		(a list of articulatory features)
         and V is one of the base protos.
         See Phonology class for articulations.
-        
         '''
         
         r = random
@@ -436,8 +439,9 @@ class Convention:
         #CONSONANTS
         from Phonology import get_feature_dict
         self.consonant_dict = get_feature_dict() #default is English (sorry)
+        cd = self.consonant_dict
+        consonants = [c for c in cd.keys()]
         
-        consonants = [c for c in self.consonant_dict.keys()]
         
         #proto balance (functional load)
         #should probably seed instead of generating inside the loop.
@@ -447,8 +451,10 @@ class Convention:
         for nucleus in p_list:
             num_words_vowel = r.randint(min_words_vowel, min_words_vowel*ratio_lim)
             for i in range(num_words_vowel):
-                onset = r.choice(consonants)
-                coda = r.choice(consonants)
+                onset_name = r.choice(consonants)
+                onset = Segment.Segment(onset_name, cd[onset_name])
+                coda_name = r.choice(consonants)
+                coda = Segment.Segment(coda_name, cd[coda_name])
                 #name = "{0}+{1}+{2}".format(onset, nucleus.name, coda)
                 #new_word = W(name, nucleus, None)
                 new_word = W(onset, nucleus.name, coda, nucleus)
@@ -1031,7 +1037,8 @@ class Convention:
         if all_pts:
             for p in all_pts:
                 p.undraw()
-
+        del all_pts
+        
         #update list of current drawn dots
         self.curr_sampling = curr_sampling
 

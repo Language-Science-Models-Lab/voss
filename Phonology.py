@@ -40,7 +40,7 @@ FIIKWMTU."
 
 '''
 
-import Agent, Convention
+import Agent, Convention, Segment
 from time import ctime
 from graphics import *
 import re
@@ -75,7 +75,7 @@ class Phonology:
 		Functions can be reused, but keys can't.
 		
 		'''
-
+		
 												
 		self.articulations = {"null": self.null,
 							  "stop": self.stop,
@@ -91,18 +91,21 @@ class Phonology:
 							  "posterior": self.posterior,
 							  "laminal": self.laminal, 
 							  "dorsal": self.dorsal,
-							  "front": self.front,
-							  "high": self.high,
-							  "low": self.low,
 							  "voiced": self.voiced,
 							  "voiceless": self.voiceless,
 							  "retracted": self.retracted,
 							  "spread": self.spread_glottis,	#spread==aspirated
 							  "constricted": self.constricted_glottis,
-							  "palatal": self.palatal #unlisted in Flynn 12 (not phonological)
-							  
-							  }
-		
+							  "palatal": self.palatal, #unlisted in Flynn 12 (not phonological),
+							  #VOWELS
+							  "high": self.high,
+							  #"mid": self.mid,
+							  #"low": self.low,
+							  "front": self.front,
+							  #"central": self.central,
+							  #"back": self.back,
+							  #"rounded": self.labial
+							}
 		arts = self.articulations
 		self.features = fl
 
@@ -176,7 +179,7 @@ class Phonology:
 
 	def nasal(self, syll, pos, assim):
 		'''
-		increase e1
+		decrease e1
 		effect increased if nasal is in the coda
 		'''
 		o, n, c = syll
@@ -188,8 +191,8 @@ class Phonology:
 			if assim:
 				n = self.lower_v(n, mi, ma)
 			else:
-				n = self.raise_v(n, mi, ma)	  
-				
+				n = self.raise_v(n, mi, ma)	
+				 
 		return n
 
 
@@ -443,9 +446,11 @@ class Phonology:
 		if pos is 2:
 			amount = randint(50, 75)
 			if assim:
-				n.length += amount
+				if (n.length + amount) < 300:
+					n.length += amount
 			else:
-				n.length -= amount
+				if (n.length - amount) > 75:
+					n.length -= amount
 		
 		return n
 
@@ -473,7 +478,7 @@ class Phonology:
 		l_amount = randint(0, 50) #up to 50 ms
 		
 		if assim:
-			if (n.length - l_amount) > 50: #aspirated onset
+			if (n.length - l_amount) > 75: #aspirated onset
 				n.length -= l_amount #reduce length)
 		else:
 			if (n.length + l_amount) < 300:
@@ -652,7 +657,7 @@ def dum_v():
 
 
 
-def test_symbol(symbol, assimilate = True, vowel = None):
+def test_symbol(symbol_name, assimilate = True, vowel = None):
 	'''
 	Apply the features of the symbol to the vowel.
 	Assimilate indicates whether the changes are applied (coarticulated)
@@ -664,10 +669,11 @@ def test_symbol(symbol, assimilate = True, vowel = None):
 		vowel = dum_v()
 
 	fm = get_feature_dict()
-	if symbol not in fm:
-		print(symbol, "undefined in Phonology.Articulations")
+	if symbol_name not in fm:
+		print(symbol_name, "undefined in Phonology.Articulations")
 		return
-	word = Word(symbol, vowel.name, "-", vowel) 
+	symbol = Segment.Segment(symbol_name, fm[symbol_name])
+	word = Word(symbol, vowel, "-", vowel) 
 	child = make_child()
 	child.chosen = True
 	print("Original vowel:", vowel, "in syllable", word)
@@ -712,6 +718,28 @@ def test_perception(iterations = 1):
 	#conv.plot(0, 0, "")
 	conv.close_win()
 
+
+
+def view_coarts(v):
+	lex = get_rand_lex(v)
+
+
+
+def get_rand_lex(v):
+	#draw the articulation and dearticulation perimeters
+	#center is v
+	#borders are defined by coart functions + phone/vowel noise
+	
+	
+	from Word import Word
+	conv = make_convention(v)
+	c_words = conv.lexicon.values()
+	cbpd = conv.base_proto_dict
+	#for cw in c_words:
+		
+	
+	conv.draw_def_margin()
+	
 
 
 def test_vowel_class(v):
