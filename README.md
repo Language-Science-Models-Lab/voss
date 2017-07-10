@@ -11,13 +11,13 @@ You'll need Python 3.4+ to run VoSS https://www.python.org/downloads/
 
 You'll also need the TKinter library. https://docs.python.org/3/library/tkinter.html#module-tkinter
 
-Running the program
-Linux
-From the ".../Language-Science-Models-Lab/voss" directory, enter
+Running the program   
+*Linux or Mac terminal*  
+From the ".../Language-Science-Models-Lab/voss" directory, enter   
 >>python3 Game_fns.py
 
-Using IDLE in Windows/Linux
-Open "Game_fns.py".
+Using IDLE in Windows/Linux/Mac  
+Open "Game_fns.py".  
 Use the f5 key or "Run > Run Module" from the menu. 
 
 The command menu will show in the terminal or IDLE shell. 
