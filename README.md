@@ -6,8 +6,10 @@ hjmscott. (2017). Language-Science-Models-Lab/voss: First public release of VoSS
 
 GETTING STARTED
 Installation and libraries
-You'll need Python 3.4+ to run VoSS
-You'll also need the TKinter library. 
+
+You'll need Python 3.4+ to run VoSS https://www.python.org/downloads/
+
+You'll also need the TKinter library. https://docs.python.org/3/library/tkinter.html#module-tkinter
 
 Running the program
 Linux
