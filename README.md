@@ -1,5 +1,13 @@
-# voss
-Complex system model of language change
+# voss -- Complex system model of language change
+
+Vowel Systems Sandbox (VoSS) is open-source software for running simulations. Specifically, VoSS is an agent-based model (ABM) of language in a complex dynamic system (CDS). The agents interact with each other to learn and pass on their vowel inventories while phonetic and phonological changes in the convention (i.e. the vowel phonemic inventory) are tracked. The software is free to anyone interested in seeing vowel systems change in a virtual community of children learning from their parents. 
+
+VoSS is a serious attempt to offer a computational implementation of the prolific lip-service paid to the notion that language and language acquisition communities are a complex dynamic adaptive system. VoSS is not based on any single paper, but draws heavy inspiration from many sources, chiefly
+1. Ohala and Blevins for the mechanisms of change,
+2. Rosner & Pickering for the mechanics of vowel perception and production, and
+3. de Boer and Steels for the general structure of an imitation game in language acquisition. 
+
+We welcome feedback and ideas from the community--see the Github Wiki for more details!
 
 CITE AS  
 hjmscott. (2017). Language-Science-Models-Lab/voss: First public release of VoSS [Data set]. Zenodo. http://doi.org/10.5281/zenodo.582663
