@@ -1,4 +1,4 @@
-# voss -- Complex system model of language change
+# Vowel System Sandbox -- Complex system model of language change
 
 Vowel System Sandbox (VoSS) is an agent based model (ABM) of language in a complex dynamic system (CDS). The agents interact with each other to learn and pass on their vowel inventories while phonetic and phonological changes in the convention (i.e. the vowel phonemic inventory) are tracked. The software is free to use and open-source to anyone interested in seeing vowel systems change in a virtual community of children learning from their parents. 
 
