@@ -21,7 +21,7 @@ min_e1 = e1_min()
 max_e2 = e2_max()
 min_e2 = e2_min()
 
-import Vowel, Word
+import Vowel, Word, datetime
 from random import uniform, randint
 
 class Agent:
@@ -178,6 +178,7 @@ class Agent:
 			new_e2 = min_e2
 			
 		new_v = Vowel.Vowel(new_e1, new_e2, new_length, w)
+		new_v.set_features(max_e1, max_e2, min_e1, min_e2)
 		return new_v
 
 
@@ -292,7 +293,11 @@ class Agent:
 			if self.age < 1:
 				v.weight += .1
 				if self.prox_margin:
+					t0 = datetime.datetime.now()
 					self.settle_conflicts()
+					t1 = datetime.datetime.now()
+					dif = t1 - t0
+					#print(dif)
 			
 		if self.age > 0:				#baby--agents under 1 only hear the vowel
 			self.word_match(v, w)		#child--add word to vocabulary
@@ -1037,10 +1042,17 @@ class Agent:
 		c1 = P(fm[onset.name])
 		c2 = P(fm[coda.name])
 		ofl = onset.features
+		nfl = nuc.features
 		cfl = coda.features
+		
 		for of in ofl:
 			ofns = c1.articulations
 			nuc = ofns[of]( (onset, nuc, coda), 0, False)
+					
+		for nf in nfl:
+			nf_nuc = ofns[nf]((onset, n_nuc, coda), 1, False)
+			n_nuc = nf_nuc
+			
 		for cf in cfl:
 			cfns = c2.articulations
 			nuc = cfns[cf]( (onset, nuc, coda), 2, False)

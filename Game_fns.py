@@ -20,7 +20,7 @@ Use 'run' if you just want to see what happens with default parameters.
 import Vowel, Convention, Agent, Prototype, profile, Word
 from time import ctime
 from graphics import *
-import re
+import re, datetime
 from random import sample, choice
 
 class Game_fns:
@@ -36,30 +36,31 @@ class Game_fns:
 		self.total_interactions = 0
 		self.num_cycles = 1						#cycle = follow a group from introduction to removal i.e. birth to death
 		self.cycle_lim = self.num_cycles
-		self.population_max = 200				#population control
-		self.age_limit = 60						#Age at which agents are removed.
+		self.population_max = 100000				#population should never go this high unless you're running on Blue Gene
+		self.growth_rate = .03					#population growth rate (min. 2 agents/step)
+		self.age_limit = 40						#Age at which agents are removed.
 		al = self.age_limit						
 		self.max_groups = al					#max length of self.population	
 		pm = self.population_max				#population won't grow beyond this size
-		self.anc_group_size = int((pm/al)*10)	#ancestor group (first group with matching repertoires) is 10x larger
+		self.anc_group_size = 200			#ancestor group (first group with matching repertoires) recommended 60+
 		self.g_size = max([2, int( (pm-self.anc_group_size)/al )]) #num. of agents in each age group. If you want to use large numbers, turn off show
 		self.show = False						 #True -> more information is displayed. Turning this off makes runtime shorter
 		self.color_on = True					#True -> prototypes and vowels are color-coded in graphic reports
 		self.length_flag = True					#True -> all agents discriminate long vs short vowels
 		self.pause_time = 1						#number of seconds to show step reports (0 to wait for click)
-		self.perception = .75					  #margin within which agents recognize matches (uniform and static for all agents)				
-		self.phone_radius = 0.25				 #margin within which agents form internal representation
-		self.phone_radius_noise = .5			#margin within which agents produce their internal representation when speaking
-		self.prox = 1.5						   #controls the sensitivity of vowels in agent's reps
+		self.perception = 1.0					  #margin within which agents recognize matches (uniform and static for all agents)				
+		self.phone_radius = 0				 #margin within which agents form internal representation
+		self.phone_radius_noise = 0.25			#margin within which agents produce their internal representation when speaking
+		self.prox = -1						   #controls the sensitivity of vowels in agent's reps
 		#PROX NOTE: prox is in ERB units and is added to vowel.weight
 		
 		self.adapt_perc = 0						#amount agents modify perception from feedback (0 will disable)
 		self.social = 0							#social prestige ranking levels (0 will diable)
 		
-		self.lang_fn = "english"
+		self.lang_fn = "welsh"
 		self.base = self.languages[self.lang_fn]   #base convention, which can be overwritten in the menu interface
 
-		self.lex_size = 25					   #override the Convention default
+		self.lex_size = 50					   #override the Convention default
 		self.convention = Convention.Convention(self.show, self.color_on, self.lex_size)  #Convention tracks the prototypes
 		self.convention.str_to_protos(self.base)#Convention reads in a string and splits into keys
 		self.use_ipa_symbols = True
@@ -73,20 +74,22 @@ class Game_fns:
 		self.age_adult = int(self.age_limit/10) + 1		#at 10% lifespan, agents purge their vowels and stop listening
 		
 		self.contact_agents = 50	   #limit on number of "non-family" agents a listener hears at each step
-		self.contact_words = 10		#limit on how many words a listener heard from each "non-family" contact at each step
-		self.fam_size = 4
+		self.contact_words = 25		#limit on how many words a listener heard from each "non-family" contact at each step
+		self.fam_size = 1
 		self.micro = False
 		self.micro_agent = None
+		self.num_repeats = 4 #MULTIPLE INTERACTIONS PER FAM MEMBER
 		
 
 		self.sample_report = self.percept_sampling
 		self.find_prototypes = self.percept_protos
 		self.avg_adults_only = True
+		self.sampling_lim = 50
 		self.margin_watcher = False
 		self.curr_cycle = 0
 		self.str_buf = []
 		
-		self.armchair_var = True
+		self.armchair_var = False
 		
 		'''
 		SOME NOTES ON THE MARGIN MECHANICS
@@ -232,18 +235,19 @@ class Game_fns:
 		'''
 		Adds a new group of Agents with age = 0 to population--
 		babies eager to learn their parents' vowels and grow up to speak words.
-		Population size controlled by max_groups.
+		Population size controlled by growth_rate
 		'''
 		popul = self.population
 		pot_fam = [k for k in self.get_sampling().keys()]
 		fam_size = min([self.fam_size, len(pot_fam)])
-		
+		gr = self.growth_rate
 		
 		pm = self.population_max
 		ta = self.total_agents
 		al = self.age_limit
 		#gs = self.g_size
-		gs = max([1, int( (pm-ta) / (al - len(popul)) )] )
+		#gs = max([1, int( (pm-ta) / (al - len(popul)) )] )
+		gs = max([2, int(ta * gr)]) #add at least two new agents every step
 		self.g_size = gs
 		if (ta+gs) <= pm:  #population growth control. Peak population size = g_size * max_groups
 			a = Agent.Agent
@@ -278,6 +282,7 @@ class Game_fns:
 		adult_age = int(self.age_limit/10)+1
 		children = [g for g in self.population if g[0].age < adult_age]
 		ta = self.total_agents
+		rpt = self.num_repeats  #MULTIPLE INTERACTIONS PER FAM MEMBER
 
 		#"micro" mode: pick a random agent to monitor closely
 		if (self.micro and not self.micro_agent):
@@ -303,16 +308,30 @@ class Game_fns:
 		#iterate through population
 		for g in children:
 			for a in g:
+				
+				#time0 = datetime.datetime.now()
+				
 				#get sample_size random words from population
 				random_speakers = sample(s_keys, sample_size)
+					
 #
 				#random_words = [sample(s[rsp], min([len(s[rsp]), cw]) ) for rsp in random_speakers if len(s[rsp])]
 				#cw is the limit on how many words to get (0 for the whole vocab)
 				random_words = ( self.sample_agent_words(s[rsp], cw) for rsp in random_speakers if len(s[rsp]))
 				for rws in random_words:
 					for rw in rws:
+						
+						#time1 =  datetime.datetime.now()
+						#dif1 = time1 - time0
+						
+						#time6 = datetime.datetime.now()
 						t(a, rw) #show the random words to the learner
-					
+						#time7 = datetime.datetime.now()
+						#dif4 = time7 - time6
+						#print(dif4)
+						
+				#time2  = datetime.datetime.now()
+				
 				#get "family" input
 				family = [f for f in a.family if f in s]
 				#replace the dead family members (after a brief moment of respectful silence)
@@ -321,14 +340,29 @@ class Game_fns:
 					new_fam = sample( [sk for sk in s_keys if sk != a.name and sk not in family and len(s[sk])], dead)
 					family.extend(new_fam)
 				
-				fam_words = (self.sample_agent_words(s[member]) for member in family)
-				for ws in fam_words:
-					for w in ws:
-						t(a, w)
-					 
+				for i in range(rpt):
+				
+					fam_words = (self.sample_agent_words(s[member]) for member in family)
+					for ws in fam_words:
+						for w in ws:
+						
+							#time3 = datetime.datetime.now()
+							#dif2 = time3 - time2
+						
+							t(a, w)
+				#time4 = datetime.datetime.now()
+				#print(dif1+dif2)
 		if self.show:
 			self.sample_report() #draw population repertoires
 			self.proto_report()	 #draw current Prototypes
+		
+		#time5 = datetime.datetime.now()
+		#dif3 = time5 - time4
+		
+		#total_overhead = dif1 + dif2 + dif3
+		#print(total_overhead)
+
+
 
 
 
@@ -425,8 +459,13 @@ class Game_fns:
 			
 		else:
 			min_age_avg = 0
-			
-		self.find_prototypes(min_age_avg, self.age_limit)
+		
+		#if self.show:
+			#time0 = datetime.datetime.now()
+			#self.find_prototypes(min_age_avg, self.age_limit)
+			#time1 = datetime.datetime.now()
+			#dif1 = time1 - time0
+			#print(dif1)
 
 
 
@@ -460,6 +499,8 @@ class Game_fns:
 		c.group_word_protos(r, adult_vowels)
 		return 1
 
+
+
 	def vowel_protos(self, min_age = 0, max_age = 100):
 		'''
 		Gets the average pronunciation for each word in lexicon.
@@ -488,9 +529,11 @@ class Game_fns:
 		r = self.perception + self.prox
 		c.group_word_protos(r, adult_vowels)
 		return 1
+		
+		
 			
 #################################
-#		REPORTING METHODS		#
+#REPORTING METHODS		#
 #################################
 
 ######## GRAPHICAL				 
@@ -507,6 +550,13 @@ class Game_fns:
 		the current mean centers for each word prototype,
 		and the cycle counter.
 		'''
+		if self.avg_adults_only:
+			min_age_avg = self.age_adult	
+		else:
+			min_age_avg = 0
+		
+		self.find_prototypes(min_age_avg, self.age_limit)
+		
 		c = self.convention
 		sl = []
 		sol = sl.append
@@ -537,7 +587,8 @@ class Game_fns:
 				si = "{0:25} {1}".format(p.name, str(p))
 				sol(si)
 				print(si)
-			
+		
+	
 
 		#draw the graphic
 		c.plot(self.pause_time, min_carriers, message)
@@ -561,18 +612,32 @@ class Game_fns:
 		the Agents' perception,
 		and the user-set prox supplement.
 		'''
+		from random import sample
 		lf = self.length_flag
 		p = self.population
 		c = self.convention
 		adult = self.age_adult
+		
+		
+		if self.avg_adults_only:
+			min_age_avg = self.age_adult	
+		else:
+			min_age_avg = 0
+		
+		self.find_prototypes(min_age_avg, self.age_limit)
 
 		#get all Agents' Vowels that are being used in Words
 		all_reps = set() #will be a set of Vowels
+		all_agents = []
 		for g in p:
-			for a in g:
-				for w in a.idio.values():
-					#retrieve protos i.e. vowels as they are spoken (dynamically generated)
-					all_reps.add(w.get_vowel())
+			if ((not self.avg_adults_only) or g[0].age >= self.age_adult):
+				all_agents.extend(g)
+		pop_sample = sample( all_agents, self.sampling_lim)
+		for a in pop_sample:
+			for w in a.idio.values():
+				#retrieve protos i.e. vowels as they are spoken (dynamically generated)
+				all_reps.add(w.get_vowel())
+
 
 		#Update the center label and plot the vowels
 		if all_reps:
@@ -582,7 +647,6 @@ class Game_fns:
 			c.plot_sets(all_reps, self.pause_time, s)
 			if (self.micro and self.micro_agent):
 				c.plot_micro(self.micro_agent)
-		del all_reps
 		return 1
 
 	
@@ -603,15 +667,28 @@ class Game_fns:
 		p = self.population
 		c = self.convention
 		adult = self.age_adult
+		
+							
+		if self.avg_adults_only:
+			min_age_avg = self.age_adult	
+		else:
+			min_age_avg = 0
+		
+		self.find_prototypes(min_age_avg, self.age_limit)
 
 		#get all Agents' Vowels that are being used in Words
 		all_reps = set() #will be a set of Vowels
+		all_agents = []
 		for g in p:
-			for a in g:
-				for w in a.idio.values():
+			if ((not self.avg_adults_only) or g[0].age >= self.age_adult):
+				all_agents.extend(g)
+		sample_size = min([self.sampling_lim, len(all_agents)])
+		pop_sample = sample( all_agents, sample_size)
+		for a in pop_sample:
+			for w in a.idio.values():
 					#retrieve percepts i.e. internal representation of vowels in agents' minds
 					all_reps.add(w.percept)
-					
+			
 
 		#Update the center label and plot the vowels
 		if all_reps:
@@ -662,6 +739,15 @@ class Game_fns:
 		nc = self.curr_cycle
 		cps = "Family = {0}, Contacts = {1}, Words = {2}, Cycles = {3}".format(fs, ca, cw, nc)
 		c.set_param_str(cps)
+		
+		
+		if self.avg_adults_only:
+			min_age_avg = self.age_adult	
+		else:
+			min_age_avg = 0
+		
+		self.find_prototypes(min_age_avg, self.age_limit)
+		
 		self.sample_report()
 		if c.proto_dict.values():
 			c.plot(0, min_carriers, "End results. (Click in window to continue.)")
@@ -681,6 +767,13 @@ class Game_fns:
 		Calls the current Convention's show_displacement method
 		which plots the original and current averages of prototypes
 		'''
+		if self.avg_adults_only:
+			min_age_avg = self.age_adult	
+		else:
+			min_age_avg = 0
+		
+		self.find_prototypes(min_age_avg, self.age_limit)
+		
 		conv = self.convention
 		p = str(self.perception)
 		b = self.base
@@ -697,6 +790,8 @@ class Game_fns:
 		cps = "Family = {0}, Contacts = {1}, Words = {2}, Cycles = {3}".format(fs, ca, cw, nc)
 		conv.set_param_str(cps)
 		
+
+		
 		if save:
 			fn = self.file_name(save)+"_shift"
 			conv.show_displacement(l1, protos, 1)
@@ -710,6 +805,8 @@ class Game_fns:
 
 
 		return 1
+
+
 
 	
 
@@ -737,6 +834,10 @@ class Game_fns:
 				c.win.getMouse()
 			c.close_win()
 			return 1
+			
+			
+			
+		
 		
 	def file_name(self, pref=""):
 			perc_s = str(self.perception).replace(".", "")
@@ -750,6 +851,8 @@ class Game_fns:
 			return cfn
 
 
+
+
 		
 	def draw_agent_margins(self, agent):
 		c = self.convention
@@ -757,6 +860,8 @@ class Game_fns:
 		if not self.show:
 			c.close_win()
 		return 1
+
+
 
 
 	
@@ -810,6 +915,13 @@ class Game_fns:
 		'''
 		s_out_li = [] #save output to write to file later
 		sol = s_out_li.append
+		
+		if self.avg_adults_only:
+			min_age_avg = self.age_adult	
+		else:
+			min_age_avg = 0
+		
+		self.find_prototypes(min_age_avg, self.age_limit)
 		
 		ta = self.total_agents - self.g_size #don't count the babies
 		cv = self.convention.proto_dict.values()
@@ -952,6 +1064,9 @@ class Game_fns:
 		print(s_out)
 
 	
+	
+	
+	
 	def count_word_vowels(self, show_out = False):
 		'''
 		Uses the Agents' percepts (stable), NOT vowels (dynamically generated)
@@ -995,6 +1110,9 @@ class Game_fns:
 		return(cntr)
 
 		
+		
+		
+		
 	def count_near_splits(self):
 		'''
 		Counts the number of agents who have at least one 'duplicated' vowel.
@@ -1021,13 +1139,21 @@ class Game_fns:
 		print(si)
 		self.str_buf.append(si)
 		return 1
-			
+		
+		
+		
+		
+		
 	def agent_report(self):
 		'''prints margin report and number of agents with apparent splits'''
 		for g in self.population:
 			self.margin_report(g)
 		self.count_near_splits()
 		return 1
+		
+		
+		
+		
 		
 	def print_all_reps(self):
 		'''
@@ -1062,6 +1188,10 @@ class Game_fns:
 		self.str_buf.append(sl_str)
 		return 1
 
+
+
+
+
 	def print_param(self):
 		'''prints a table with the current settings'''
 		c = self.convention
@@ -1070,7 +1200,7 @@ class Game_fns:
 		
 		print("CURRENT GAME PARAMETERS")		
 		nc = str(self.num_cycles)
-		pl = str(self.population_max)
+		pl = str(self.anc_group_size)
 		al = str(self.age_limit)
 		ss = str(self.show)
 		pm = str(self.perception)
@@ -1084,7 +1214,7 @@ class Game_fns:
 		prn = str(self.phone_radius_noise)
 		pr = str(self.phone_radius)
 
-		s1 = "| {0:^9} | {1:^9} | {2:^8} | {3:^8} | {4:^6} | {5:^5} | {6:^5} |".format("SHOW", "POPUL MAX", "LIFESPAN", "LEX SIZE", "CYCLES", "PHONE", "NOISE")
+		s1 = "| {0:^9} | {1:^9} | {2:^8} | {3:^8} | {4:^6} | {5:^5} | {6:^5} |".format("SHOW", "INIT POP", "LIFESPAN", "LEX SIZE", "CYCLES", "PHONE", "NOISE")
 		print(s1)
 
 		s2 = " {0:^11} {1:^11} {2:^10} {3:^10} {4:^8} {5:^7} {6:^7} ".format(ss, pl, al, ls, nc, pr, prn)
@@ -1099,25 +1229,209 @@ class Game_fns:
 		s5 = "BASE CONVENTION\n"+self.base+"\n"
 
 		print(s5)
+		self.est_runtime()
+
+
+
 
 	
 	def summarize_param(self):
 		'''Prints a summary of the game's parameters'''
 		c = self.convention
 		nc = self.num_cycles
-		pm = self.population_max
+		pm = self.anc_group_size
 		al = self.age_limit
 		#b_perc = self.perception
 		
-		s6 = "LEXICON\n"+("\n ".join([w.id for w in sorted(c.lexicon.values(), key = lambda word: word.nucleus)])) 
-		print(s6)
+		#s6 = "LEXICON\n"+("\n ".join([w.id for w in sorted(c.lexicon.values(), key = lambda word: word.nucleus)])) 
+		#print(s6)
 
 		#print("Running {0} cycles, max population {1}, {2}-step lifespan.".format(nc, pm, al))
 		#print("Convention:", (", ".join([k for k in c.proto_dict.keys()])))
 		if (not self.length_flag):
 			print("Agents ignore length")
-			
+
+
+
+
+
+##########################################
+# 	FUNOLOGY METHODS (don't ask.)		 #
+##########################################
+
+	
+	def make_child():
 		
+		#####################################################
+		#			CHANGE THE AGENT PARAMS HERE			#	
+		#####################################################
+		
+		perc = 1.5	  #perception margin (matching radius distance)
+		prox = -5.0	   #proximity margin (conflict trigger radius distance)
+		prod = .25	  #phone_radius (imitation / internal representation radius distance)
+		noise = 0	#utterance noise -- radius to limit randomly generated spoken voel
+		lf = True	#length flag (distinguish length, or not)
+		adapt = 0	#feedback adjustment to margins
+		prest = 0	#social prestige
+		age_adult = 2 #age at which children stop learning
+		
+		####################################################
+		A = Agent.Agent
+		child = A(0, 0, perc, prox, prod, noise, lf, adapt, prest)
+		child.age = 1
+			
+		return child
+	
+	
+	
+	
+	
+	def make_convention(lang = None):
+		
+		###########################
+		# CHANGE THE VOWELS HERE  #
+		###########################
+		if not lang:
+			lang = "i:, I, o_slash, Y, y, e:, epsilon, ae, u:, horseshoe, o:, open_o:, wedge, script_a"
+		#need to add consonant inventory
+		#create lexicon of combinations
+		cur_dict = get_feature_dict()
+		
+		num_words = len(lang.split(","))+10
+		c = Convention.Convention(True, True, num_words)
+		c.str_to_protos(lang)
+		c.strap_protos()
+		
+		return c
+	
+	
+	
+	
+	
+	def test_vowel_class(v):
+		'''
+		observe how a phone might be affected by environments when spoken
+		'''
+		conv = make_convention(v)
+		c_words = conv.lexicon.values()
+		cbpd = conv.base_proto_dict
+		
+		fm = get_feature_dict()
+		
+		A = Agent.Agent #(g, a, perc, prox, phoneradius, noise, lf, adapt, prestige)
+		perception = 1.0
+		prox_addon = -5.0
+		phone_prod_noise = .5 #irrelevant
+		vowel_prod_noise = .25 #supplementary to assimilation; set to 0 for coarticulation only
+		child = A(0, 0, perception, prox_addon, phone_prod_noise, vowel_prod_noise, 1, 0, 0)
+		child.chosen = True
+		child.age = 1
+	
+	
+		for cw in c_words:
+			child.call_matchers(conv.lexicon[cw.id])
+	
+		#conv.draw_color_map()
+		conv.draw_proto_margins(child.perception, child.prox_margin, 0)
+		child.repertoire = [w.get_vowel() for w in child.idio.values()]
+		sampling = []
+		#sampling_i = []
+		print("Child's vowel radius:", child.phone_radius_noise)
+		print("Child's phone formants:", child.repertoire[0])
+		for w in child.idio.values():
+			m = w #str(iterations-i)
+			
+			vo = w.get_vowel()
+			sampling.append(vo)
+			conv.plot_sets([vo], 0, m.id)
+			
+			print(w, "with vowel", vo)
+	
+		#conv.plot(0, 0, "")
+		conv.plot_sets(sampling, 0, "all words with "+v)
+		conv.close_win()
+	
+	
+	
+	
+	
+	def test_phone_radius(iterations=1):
+		'''observe a child saying the words'''
+		child = make_child()
+		child.chosen = True
+		child.age = 1
+	
+		conv = make_convention()
+		c_words = conv.lexicon.values()
+		print("LEXICON")
+		pc = [print(c, '\t', c.get_vowel()) for c in c_words]
+		conv.draw_color_map()
+	
+		for cw in c_words:
+			child.idio[cw.id] = conv.lexicon[cw.id]
+	
+		child.repertoire = [w.get_vowel() for w in child.idio.values()]
+		sampling = []
+		for i in range(iterations):
+			sampling_i = []
+			for w in child.idio.values():
+				pv = child.get_vowel(w)
+				sampling_i.append(pv)
+				print(w, "with vowel formants", w.get_vowel())
+				print("child's phone:", pv)
+			m = str(iterations-i)
+			conv.plot_sets(sampling_i, 1, m)
+			sampling.extend(sampling_i)
+		
+		#conv.plot(0, 0, "")
+		conv.plot_sets(sampling, 0, "all phones")
+		conv.close_win()
+	
+	
+	
+	
+	
+	
+	def test_symbol(symbol_name, assimilate = True, vowel = None):
+		'''
+		Apply the features of the symbol to the vowel.
+		Assimilate indicates whether the changes are applied (coarticulated)
+		or 'undone' / deassimilated
+		If no vowel is provided, a random one will be created. 
+		'''
+		
+		if not vowel:
+			vowel = dum_v()
+			
+		fm = get_feature_dict()
+		if symbol_name not in fm:
+			print(symbol_name, "undefined in Phonology.Articulations")
+			return
+		symbol = Segment.Segment(symbol_name, fm[symbol_name])
+		w = Word.Word(symbol, vowel, "-", vowel) 
+		w = None
+		child = make_child()
+		child.chosen = True
+		print("Original vowel:", vowel, "in syllable", w)
+		
+		if assimilate:
+			pv = w.get_vowel()
+			print("Applying features", fm[symbol])
+			print("Assimilated vowel:", pv)
+		else:
+			pv = child.get_vowel(w)
+			print("Correcting features", fm[symbol])
+			print("De-assimilated vowel", pv)
+	
+		
+	
+	
+	
+	
+	
+	
+	
+
 #################################
 # PARAMETER-SETTING METHODS		#
 #################################
@@ -1130,27 +1444,27 @@ class Game_fns:
 		'''
 		lf = self.length_flag
 		al = self.age_limit
-		gs = self.anc_group_size
+		ags = self.anc_group_size
 		pm = self.perception
 		prox = self.prox
 		prod = self.phone_radius
 		noise = self.phone_radius_noise
 		a = Agent.Agent
 		c = self.convention
-		
+		gr = self.growth_rate
 		pop_max = self.population_max
 		gp = self.get_prestige
 		
 		if pop_max <= al:
 			self.population_max = al+1
-			self.g_size = max([2, int( (self.population_max-gs)/al )])
+			self.g_size = max([2, int(ags*gr)])
 		if reset:
 			self.curr_cycle = 0
 			c.reset(self.base)
 			self.population = list()
 			ap = self.adapt_perc
-			ancestors = [a(0, j, pm, prox, prod, noise, lf, ap, gp()) for j in range(gs)]
-			self.total_agents = gs		  
+			ancestors = [a(0, j, pm, prox, prod, noise, lf, ap, gp()) for j in range(ags)]
+			self.total_agents = ags		  
 			self.population.append(ancestors)
 			self.g_count = 0		#number of groups who have been born
 			c.strap_protos()	  #sets the number of carriers manually because everyone is the same 
@@ -1165,6 +1479,8 @@ class Game_fns:
 		#s1 = "Current number of agents = {0}. Perception = {1}. Prox add-on set to {2}.".format(self.total_agents, self.perception, self.prox)
 		cps = "Family = {0}, Contacts = {1}, Words = {2}".format(fs, ca, cw) 
 		c.set_param_str(cps)
+
+
 
 
 			
@@ -1214,6 +1530,8 @@ class Game_fns:
 			
 
 
+
+
 	def set_cycles(self, more = False, get = None):
 		'''Overwrite default number of cycles between reports.'''
 		if more:
@@ -1232,18 +1550,21 @@ class Game_fns:
 		while nc < 1:
 			nc = int(input("Try a number greater than 0: "))
 		self.num_cycles = nc
+		self.est_runtime()
 		return 1
-							  
+	
+	
+	
 
 
 	def set_size(self, more = False, get = None):
-		'''Overwrite default population size.'''
+		'''Overwrite ancestor group size.'''
 		if more:
-			print("The population will continue to grow by adding new agents at every step until a limit is reached.")
-			print("At that point, the game will stop adding agents until a group is removed.")
-			print("The population maximum has to be greater than the age limit.")
+			print("The game is initialized with a group of 'ancestor' agents.")
+			print("The population will continue to grow by adding at least 2 new agents at every step.")
+			
 		if not get:
-			pm = input("Population size limit: ")
+			pm = input("Number of ancestors: ")
 			if not pm:
 				print("Canceled.")
 				return 1
@@ -1251,15 +1572,18 @@ class Game_fns:
 			pm = eval(get)
 		pm = int(pm)
 		al = self.age_limit
-		if pm <= al:
-			pm = al+1
-			print("Population size must be >", al, ". Setting to", al+1, ".")
+		#if pm <= al:
+		#	pm = al+1
+		#	print("Population size must be >", al, ". Setting to", al+1, ".")
 		self.max_groups = al		
-		self.population_max = pm
-		self.g_size = max([1, int(pm/al)])
+		self.anc_group_size = pm
+		self.g_size = max([2, int(pm*self.growth_rate)])
 		self.fam_size = min(self.fam_size, self.g_size)
-		self.anc_group_size = self.g_size * 10
+		#self.anc_group_size = self.g_size * 10
+		self.est_runtime()
 		return 1
+
+
 
 
 
@@ -1281,10 +1605,13 @@ class Game_fns:
 			al = int(input("Try a number between 20 and 100: "))
 		self.age_limit = al
 		self.max_groups = al
-		self.population_max = max( [(al+1), self.population_max] )
+		#self.population_max = max( [(al+1), self.population_max] )
 		pm = self.population_max
-		self.g_size = max([1, int(pm/al)])
+		#self.g_size = max([1, int(pm/al)])
+		self.est_runtime()
 		return 1
+
+
 
 
 
@@ -1301,6 +1628,8 @@ class Game_fns:
 			
 
 
+
+
 	def set_protos(self, more = False, get = None):
 		'''Overwrite base convention with a list of IPA prototypical vowels. '''
 		c = self.convention
@@ -1313,6 +1642,8 @@ class Game_fns:
 		#self.base = ", ".join(c.base_proto_dict.keys())
 		c.strap_protos(self.g_size)
 		return 1
+
+
 
 
 
@@ -1341,7 +1672,10 @@ class Game_fns:
 		if prox < 0:
 			prox = 0
 		#self.convention.draw_proto_margins(perc, prox)
+		self.est_runtime()
 		return 1
+
+
 
 
 
@@ -1358,6 +1692,8 @@ class Game_fns:
 		else:
 			self.length_flag = eval(get)
 		return 1
+	
+	
 	
 
 
@@ -1414,6 +1750,8 @@ class Game_fns:
 
 
 
+
+
 	def set_prox(self, more = False, get = None):
 		'''Overwrite default proximity add-on.'''
 		avg_prox = ((self.lex_size/len(self.base.split(" ")))/self.lex_size)
@@ -1435,7 +1773,10 @@ class Game_fns:
 		if avg_prox < 0:
 			avg_prox = 0
 		print("Avg proximity margin will be", avg_prox)
+		self.est_runtime()
 		return 1
+		
+		
 		
 
 
@@ -1476,6 +1817,8 @@ class Game_fns:
 
 
 
+
+
 	def set_lex_size(self, more = False, get = None):
 		if not get:
 			ls = int(input("Lexicon size (e.g. 50):"))
@@ -1484,8 +1827,11 @@ class Game_fns:
 		self.lex_size = ls
 		self.convention = Convention.Convention(self.show, self.color_on, self.lex_size)  #Convention tracks the prototypes
 		self.convention.str_to_protos(self.base)#Convention reads in a string and splits into keys
+		self.est_runtime()
 		return 1
 	
+
+
 
 
 	def set_prod_noise(self, more = False, get = None):
@@ -1498,6 +1844,8 @@ class Game_fns:
 
 
 
+
+
 	def set_phone_radius(self, more = False, get = None):
 		if not get:
 			p = float(input("Imitation margin in ERB (e.g. .25):"))
@@ -1506,7 +1854,9 @@ class Game_fns:
 		self.phone_radius = p
 		return 1
 		
-
+		
+		
+		
 	
 	def set_adapt(self, more = False, get = None):
 		'''
@@ -1520,6 +1870,8 @@ class Game_fns:
 		self.adapt_perc = ad
 		return 1
 	
+
+
 
 
 	def use_lang(self, more = False, get = None):
@@ -1557,8 +1909,11 @@ class Game_fns:
 		else:
 			self.convention.draw_proto_margins(self.perception, self.prox, True)	
 		self.convention.close_win()
+		self.est_runtime()
 
 		return 1
+
+
 
 
 
@@ -1585,6 +1940,8 @@ class Game_fns:
 
 
 
+
+
 	def color_sampling(self, more = False):
 		'''Switch color-coded graphics on/off'''
 		if more:
@@ -1593,6 +1950,8 @@ class Game_fns:
 		else:
 			self.color_on = not self.color_on
 		return 1
+
+
 
 
 
@@ -1605,7 +1964,10 @@ class Game_fns:
 		else:
 			ca = eval(get)
 		self.contact_agents = ca
+		self.est_runtime()
 		return 1
+
+
 
 
 
@@ -1617,7 +1979,10 @@ class Game_fns:
 		else:
 			cw = eval(get)
 		self.contact_words = cw
+		self.est_runtime()
 		return 1
+
+
 
 
 
@@ -1634,6 +1999,8 @@ class Game_fns:
 
 	
 
+
+
 	def set_fam_size(self, more = False, get = None):
 		if more:
 			print("Agents are assigned a number of permanent family member agents at birth.")
@@ -1643,7 +2010,27 @@ class Game_fns:
 		else:
 			fs = eval(get)
 		self.fam_size = min([fs, (self.anc_group_size)])
+		self.est_runtime()
 		return 1
+
+
+
+
+
+	def set_func_load(self, more = False, get = None):
+		fll = self.convention.func_load_max
+		if more: 
+			print("With a randomly generated lexicon, some vowels have more words (higher functional load).")
+			print("Any vowel in the convention may have up to", fll, "X as many words as any other.")
+		if not get:
+			nfll = int(input("Enter a cap for the functional load range:"))
+		else:
+			nfll = eval(get)
+		self.convention.func_load_max = nfll
+		self.est_runtime()
+		return 1
+
+
 
 
 
@@ -1679,6 +2066,8 @@ class Game_fns:
 		return 1
 
 	
+	
+	
 
 	def switch_micro(self, more = False):
 		'''
@@ -1695,6 +2084,8 @@ class Game_fns:
 		
 	
 	
+	
+	
 	def switch_armchair_var(self, more = False):
 		if more:
 			print("'Armchair-inspired Agents' form their repertoires as babies.")
@@ -1705,12 +2096,93 @@ class Game_fns:
 		print("'Armchair Mode' set to", self.armchair_var)
 		return 1
 		
+		
+		
+		
+		
+		
+	def set_sampling_lim(self, more = False, get = None):
+		'''
+		Limits the number of dots drawn
+		Does not affect the prototype reflex calculations
+		
+		'''
+		if more:
+			print("The sampling limit puts a cap on the number of agents whose repertoires are plotted.")
+			print("Lowering this limit means that fewer dots will show on the graph.")
+			print("This parameter does not affect the prototype reflex calculations (the spots)")
+		if get:
+			self.sampling_lim = eval(get)
+		else:
+			self.sampling_lim = eval(input("Enter the upper limit of agents:"))
+		return 1
+		
+		
+		
+		
+		
+	def set_maturity(self, more=False, get=None):
+		'''
+		Sets the age at which agents stop learning.
+		'''
+		al = self.age_limit
+		aa = self.age_adult
+		if more:
+			print("VoSS agents stop learning when they become adults.")
+			print("The current age of maturation is", aa)
+		if not get:
+			self.age_adult = eval(input("Enter the age of adulthood (>=", al, "):"))
+		else:
+			self.age_adult = eval(get)
+		self.est_runtime()
+		return 1
+			
+		
+		
+		
+		
+	def set_growth(self, more = False, get = None):
+		'''
+		Sets the rate at which the ancestor population grows.
+		'''
+		gr = self.growth_rate
+		ags = self.anc_group_size
+		
+		if more:
+			print("The population will start at", ags, "and grow by a percentage at each step.")
+		if not get:
+			print("Note: At least 2 agents will be added at every step.")
+			self.growth_rate = eval(input("Enter a growth rate (e.g. '10' for 10%):"))
+		else:
+			self.growth_rate = eval(get)
+		self.est_runtime()
+		return 1
+			
+			
+			
+
+	def set_repeats(self, more = False, get = None):
+		'''
+		Sets the number of interactions per step per family member per listener.
+		Call from menu with 'repeats' or e.g. 'repeats = 1'
+		'''
+		nr = self.num_repeats
+		
+		if more:
+			print("At each step, learners hear the full vocabulary of each family member a number of times.")
+		if not get:
+			self.num_repeats = eval(input("Enter a number of repetitions:"))
+		else:
+			self.growth_rate = eval(get)
+		self.est_runtime()
+		return 1
+
 
 #################################
-#				#
+#								#
 # PHONOLOGY THEORY-SWAPPING     #
 #  *Not actively maintained     #
-#				#
+#								#
 #################################
 
 	def golston_presets(self):
@@ -1867,6 +2339,7 @@ class Game_fns:
 		print("Using preset:", para)
 		return paradigms[para]()
 
+
 	
 
 	def summ_presets(self):
@@ -1879,7 +2352,54 @@ class Game_fns:
 		print( "Base Perception\t= {0}\tphone_radius\t= {1}".format(bp, prod) )
 		print( "Prod. Noise\t= {0}\tProx Addon\t= {1}".format(pn, prox) )
 		print( "Perception Adj.\t= {0}\tFam. Size\t= {1}".format(ap, fs) )
+			
 		return 1
+		
+		
+		
+		
+	
+	def est_runtime(self):
+		ags = self.anc_group_size
+		popsize = ags + ((ags * self.growth_rate) * self.cycle_lim)
+		lifespan = self.age_limit
+		lex = self.lex_size
+		inventory = len(self.base.split())
+		fs = self.fam_size * self.num_repeats
+		friends = self.contact_agents
+		words = self.contact_words
+		num_cycles = self.cycle_lim
+		fll = self.convention.func_load_max
+		real_lex = ((lex / inventory)+1) * (fll / 2) * inventory 
+		
+		#overhead_interaction = 0 #* real_lex #milliseconds
+		#overhead_group = overhead_interaction * (popsize/lifespan)
+		#overhead_step = 0 #(popsize/lifespan) * .01
+		
+		#show the number of interactions per step
+		learners = popsize / 10	#10% lifespan for age of maturity
+		fam_words = real_lex * fs
+		friend_words = friends * words
+		interactions = int(learners * (fam_words + friend_words))
+		
+		#show the estimated time for the first cycle
+		ms_interact = .3 
+		if self.prox > 0.0001:
+			ms_interact += (real_lex * .5)
+		if self.perception < .75:
+			ms_interact += real_lex * .01
+		interacts_cycle1 = lifespan * interactions
+		overhead_cycle1 = lifespan/6.0
+		minutes_cycle1 = (((ms_interact / 6.0) * interacts_cycle1)/10000) + (overhead_cycle1/10000)
+		#print("Est <", int(minutes_cycle1), " minutes to complete first cycle.")
+		
+		#show the estimated time for the whole run
+		total_hours = (((minutes_cycle1/lifespan) * (num_cycles - 1)) + minutes_cycle1)/60
+		
+		print("Est.", interactions, "interactions/step") #; <", int(minutes_cycle1), "mins for cycle 1; {0:.2}hrs to run the simulation.".format(total_hours))
+		#print("Est < {0:.2} hours to run simulation.".format(total_hours))
+		
+		
 		
 		
 #############################
@@ -1892,6 +2412,7 @@ class Game_fns:
 		
 		self.strap_game(reset)
 		self.summarize_param()
+		
 		cc = self.curr_cycle
 		nc = self.num_cycles
 		pm = self.population_max
@@ -1923,17 +2444,23 @@ class Game_fns:
 			self.micro_agent = None
 		return 2
 
+
+
 	
 
 	def game_extender(self):
 		'''game continues on for self.num_cycles'''
 		return self.game_driver(False)
 
+
+
 	
 
 	def stop(self):
 		'''Just exits the program. Not really needed.'''
 		return 0
+
+
 
 
 
@@ -1954,9 +2481,13 @@ class Game_fns:
 		return 1
 
 
+
+
 	def write_images(self, cust_fn = None):
 		self.displacement_report(cust_fn)
 		self.redraw_last(cust_fn)
+
+
 
 		
 
@@ -1970,7 +2501,7 @@ class Game_fns:
 		sol(s0)
 		
 		nc = str(self.num_cycles)
-		pl = str(self.population_max)
+		pl = str(self.anc_group_size)
 		al = str(self.age_limit)
 		ss = str(self.show)
 		pm = str(self.perception)
@@ -1983,7 +2514,7 @@ class Game_fns:
 		phn = str(self.phone_radius)
 		fs	= self.fam_size
 
-		s1 = "| {0:^7} | {1:^12} | {2:^10} | {3:^16} | {4:10} | ".format("SHOW", "CYCLES", "POPUL. MAX", "LIFESPAN", "LEX. SIZE")
+		s1 = "| {0:^7} | {1:^12} | {2:^10} | {3:^16} | {4:10} | ".format("SHOW", "CYCLES", "INIT POP", "LIFESPAN", "LEX. SIZE")
 		sol(s1)
 		
 		s2 = "{0:^14} {1:^11} {2:^15} {3:^16} {4:^13}".format(ss, nc, pl, al, ls)
@@ -2015,6 +2546,8 @@ class Game_fns:
 		
 		
 		
+		
+		
 	def build_archive(self, l = None):
 		'''
 		Use to test different parameters on the same language
@@ -2025,8 +2558,10 @@ class Game_fns:
 		g = self
 		if not l:
 			lang = input("Enter Language: ")
-		cycle_inc = 2	#CYCLE INCREMENT: NUMBER OF CYCLES BETWEEN IMAGE CAPTURES
-		total_cc = 100 #TOTAL NUMBER OF CYCLES (will be divided by num_cycles for loop)
+		#cycle_inc = 2	#CYCLE INCREMENT: NUMBER OF CYCLES BETWEEN IMAGE CAPTURES
+		#total_cc = 350 #TOTAL NUMBER OF CYCLES (will be divided by num_cycles for loop)
+		total_cc = eval(input("Total number of cycles:"))
+		cycle_inc = eval(input("Number of cycles between images:"))		
 		if cycle_inc > total_cc:
 			print("cycle increment > total cycles!")
 		
@@ -2042,7 +2577,7 @@ class Game_fns:
 		fam_i = 1 #inc
 		friends0 = g.contact_agents #default
 		friends_i = 15 #inc
-		g.lex_size = g.lex_size
+		#g.lex_size = self.lex_size
 		
 		# ("margin", perc_i), ("prox", prox_i), ("phone", phone_i), ("noise", v_i), ("family", fam_i), ("contacts", friends_i)
 		params = [("margin", perc_i)] # ("margin", perc_i), ("prox", prox_i), ("phone", phone_i), ("noise", v_i), ("family", fam_i), ("contacts", friends_i)] 
@@ -2106,6 +2641,8 @@ class Game_fns:
 
 
 
+
+
 #########################
 #	GLOBAL METHODS		#
 #########################
@@ -2116,6 +2653,8 @@ def start_game(show = True):
 		default_game.show = show
 		default_game.game_driver()
 
+		
+		
 		
 
 def settings_dict(game):
@@ -2151,9 +2690,16 @@ def settings_dict(game):
 			'parchive': param_archive,
 			'symbols': game.switch_ipa_symbols,
 			'armchair': game.switch_armchair_var,
-			'lexicon': game.set_lex_size
+			'lexicon': game.set_lex_size,
+			'func': game.set_func_load,
+			'maturation': game.set_maturity,
+			'dots': game.set_sampling_lim,
+			'growth': game.set_growth,
+			'repeats': game.set_repeats
 			}
 	return cmds
+
+
 
 
 
@@ -2192,8 +2738,12 @@ def menu():
 			options["save"] = game.save_sim
 
 			
-			
+
+
+
 def ret_0(): return 0
+
+
 
 
 
@@ -2211,8 +2761,10 @@ def print_opts(li):
 			i += 1
 		print("")
 
-		
-	
+
+
+
+
 def get_cmd(opts, c):
 	'''simple error-handler'''
 	cond_li = c.split("=")
@@ -2225,6 +2777,8 @@ def get_cmd(opts, c):
 	while cmnd not in opts:
 		cmnd = input("invalid command. Try again: ")
 	return (cmnd, arg)
+
+
 
 
 
@@ -2257,6 +2811,8 @@ def menu_help():
 	print("sampling: use either 'phones' or 'vowels' for representing the speech community")
 	print("armchair: control whether child agents use perception")
 	return 1
+	
+	
 	
 
 
@@ -2327,5 +2883,9 @@ def param_archive():
 		g.write_report(lang)
 	print("Finished all languages --", ctime())
 	return 2
+		
+		
+		
+		
 		
 menu()

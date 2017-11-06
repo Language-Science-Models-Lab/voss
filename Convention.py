@@ -1,7 +1,7 @@
 '''Vowel evolution program.
 Run with Vowel, Prototype, Game_fns, Agent, Word
 Also import time, random and graphics modules
-Last update February 2017 HJMS'''
+Last update July 2017 HJMS'''
 
 import Vowel, Prototype, time, random, Word, re, Agent, Segment
 from graphics import *
@@ -21,7 +21,7 @@ class Convention:
     
     def __init__(self, show = False, color_on = True, ls = 50):
         '''
-        Can be initialized with no arguments.
+        Can be initialized with no arguments.d
         show == True means more output e.g. step reports.
         color_on == True means vowels are color-coded,
          where the colors are static according to master set (IPA symbol names).
@@ -51,7 +51,7 @@ class Convention:
         self.param_str = ""             #center label
         self.set_vowels()               #creates ipa_dict "master set"
         self.plot = self.plot_spots     #plot_symbols will use symbols instead
-
+        self.func_load_max = 5
 
 
     def __str__(self):
@@ -337,26 +337,26 @@ class Convention:
         #BACK
         new_pro( p_hz(331, 999, 150, "turned_m") ) #unrounded [turned_m]
         new_pro( p_hz(331, 999, 250, "turned_m:") ) #unrounded [turned_m:]
-        new_pro( p_hz(331, 800, 150, "u") )          #rounded [u]
-        new_pro( p_hz(331, 800, 250, "u:") )        #rounded [u:]
+        new_pro( p_hz(331, 850, 150, "u") )          #rounded [u]
+        new_pro( p_hz(331, 850, 250, "u:") )        #rounded [u:]
 
         new_pro( p_hz(405, 1150, 150, "horseshoe") ) #singleton [omega]
         new_pro( p_hz(405, 1150, 250, "horseshoe:") ) #singleton [omega:]
 
         new_pro( p_hz(465, 1000, 150, "rams_horn") ) #unrounded [rams_horn]
         new_pro( p_hz(465, 1000, 250, "rams_horn:") ) #unrounded [rams_horn:]
-        new_pro( p_hz(465, 800, 150, "o") )     # rounded [o]
-        new_pro( p_hz(465, 800, 250, "o:") )     # rounded [o:]
+        new_pro( p_hz(465, 850, 150, "o") )     # rounded [o]
+        new_pro( p_hz(465, 850, 250, "o:") )     # rounded [o:]
 
         new_pro( p_hz(600, 1000, 150, "wedge") ) #unrounded [wedge] aka ^
         new_pro( p_hz(600, 1000, 250, "wedge:") ) #unrounded [wedge:] aka ^
-        new_pro( p_hz(600, 800, 150, "open_o") )    #rounded [open_o]
-        new_pro( p_hz(600, 800, 250, "open_o:") )    #rounded [open_o:] 
+        new_pro( p_hz(600, 850, 150, "open_o") )    #rounded [open_o]
+        new_pro( p_hz(600, 850, 250, "open_o:") )    #rounded [open_o:] 
 
         new_pro( p_hz(734, 1020, 150, "script_a") )  #unrounded [script_a]
         new_pro( p_hz(734, 1020, 250, "script_a:") )  #unrounded [script_a:]
-        new_pro( p_hz(734, 800, 150, "rev_script_a") )  #rounded [rev_script_a]
-        new_pro( p_hz(734, 800, 250, "rev_script_a:") )  #rounded [rev_script_a:]
+        new_pro( p_hz(734, 850, 150, "rev_script_a") )  #rounded [rev_script_a]
+        new_pro( p_hz(734, 850, 250, "rev_script_a:") )  #rounded [rev_script_a:]
         
            
         ############Add new prototypes above this line##############
@@ -446,7 +446,7 @@ class Convention:
         #proto balance (functional load)
         #should probably seed instead of generating inside the loop.
         #ex. ratio_lim = 5 means any proto can have up to 5x as many words as another proto
-        ratio_lim = 5 # (min_words_vowel) <= number of words in class <= (min_words_vowel * ratio lim)
+        ratio_lim = self.func_load_max # (min_words_vowel) <= number of words in class <= (min_words_vowel * ratio lim)
 
         for nucleus in p_list:
             num_words_vowel = r.randint(min_words_vowel, min_words_vowel*ratio_lim)
@@ -750,7 +750,7 @@ class Convention:
 
         #update the printout of prototypes 
         if self.color_on:
-            w = self.chart_w+(self.win_margin*2)+125
+            w = self.chart_w+(self.win_margin*2)+145
             message1 = self.side_label("Convention Vowels", w, h_side)
             message2 = self.label(self.param_str, h)
                 
@@ -857,7 +857,7 @@ class Convention:
 
         #update the printout of prototypes 
         if self.color_on:
-            w = self.chart_w+(self.win_margin*2)+125
+            w = self.chart_w+(self.win_margin*2)+145
             message1 = self.side_label("Convention Vowels", w, h_side)
             message2 = self.label(self.param_str, h)
                 
@@ -912,12 +912,12 @@ class Convention:
                 symb = ipa_trans[p_class] #proto's name (may be unicode)
 
                 #black outlines of the symbols
-                proto_symb_stroke = self.get_symbol_obj(symb, tp, 20, 'gray4', 'bold')
+                proto_symb_stroke = self.get_symbol_obj(symb, tp, 30, 'gray4', 'bold')
                 proto_symb_stroke.draw(win)
                 curr_proto_pts.append(proto_symb_stroke) #store so we can undraw later
 
                 if self.color_on:
-                    proto_symb = self.get_symbol_obj(symb, tp, 20, color)
+                    proto_symb = self.get_symbol_obj(symb, tp, 30, color)
                     proto_symb.draw(win)
                     curr_proto_pts.append(proto_symb)
 
@@ -1269,7 +1269,7 @@ class Convention:
         #second formant (x axis)
         
         self.e2_closed_max = 24.5
-        self.e2_min = 12.25
+        self.e2_min = 11.75
         e2_range = self.e2_closed_max - self.e2_min
         self.e2_open_max = self.e2_closed_max - (e2_range/8)
 
@@ -1281,7 +1281,7 @@ class Convention:
         #if using color coding, make the window bigger
         co = self.color_on
         if co:
-            self.win_width = 1025
+            self.win_width = 1100
             self.win_height = 650
             self.win_margin = 40
             self.chart_w = 800 - (self.win_margin*4)
@@ -1310,7 +1310,7 @@ class Convention:
             h = self.win_margin 
             h2 = h #+ 15
             
-            w = self.chart_w+(self.win_margin*2)+62
+            w = self.chart_w+(self.win_margin*2)+100
             
             #check to see if side label has been drawn already
             if not self.proto_label:
@@ -1346,7 +1346,7 @@ class Convention:
                         ps = ipa_trans[protos[i]]
                     else:
                         ps = p1
-                    message2 = self.side_label(ps, w+57, h2)
+                    message2 = self.side_label(ps, w+70, h2)
                     
                     message2.draw(win)
                     circle = Circle(Point(w, h2), 6.5)
@@ -1369,7 +1369,7 @@ class Convention:
                                 ps2 = p2
                             w2 = w+155
                             p_color = self.color_map[p2]
-                            message2 = self.side_label(ps2, w2+57, h2)
+                            message2 = self.side_label(ps2, w2+57, h2)#proto names
                             message2.draw(win)
                             circle = Circle(Point(w2, h2), 6.5)
                             circle.setFill(p_color)
@@ -1388,7 +1388,7 @@ class Convention:
                             ps = ipa_trans[p1]
                         else:
                             ps = p1
-                        message2 = self.side_label(ps, w+57, h2)
+                        message2 = self.side_label(ps, w+57, h2) #proto names
                         message2.draw(win)
                         circle = Circle(Point(w, h2), 7)
                         circle.setFill(p_color)

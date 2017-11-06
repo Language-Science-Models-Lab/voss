@@ -32,12 +32,12 @@ class Vowel:
 		
 
 		#FEATURES
-		#NOTE TO LINGUISTS...
-		#Please don't misconstrue this as an implementation of binary features
+		#####NOTE TO LINGUISTS...
+		######Please don't misconstrue this as an implementation of binary features
 		self.nasal = False
 		self.rounded = False
 		self.retracted = False
-		
+		self.features = []
 		self.neighbors = []	 #neighbors are Agent's other Vowels within some margin (see Agent.py)
 		
 
@@ -135,6 +135,36 @@ class Vowel:
 		This will only compare objects to see if they are identical i.e. "is" function '''
 		vwl = (self.e1, self.e2, self.length) == (other.e1, other.e2, other.length)
 	
+	
+			
+	def set_features(self, ma_e1, ma_e2, mi_e1, mi_e2):
+		e1 = self.e1
+		e2 = self.e2
+		fl = []
+		
+		min_front = ma_e2 - ((ma_e2 - mi_e2)/3) #front of the space (left)
+		max_back = mi_e2 + ((ma_e2 - mi_e2)/3) #back of the space (right)
+		
+		if e2 >= min_front:
+			fl.append("front")
+		elif e2 <= max_back:
+			fl.append("back")
+		else:
+			fl.append("central")
+		
+		max_high = mi_e1 + ((ma_e1 - mi_e1)/3) #graphically, within the top 2/3
+		min_low = ma_e1 - ((ma_e1 - mi_e1)/3) #graphically, in the bottom 2/3 
+		
+		if e1 <= max_high:
+			fl.append("high")
+		elif e1 >= min_low:
+			fl.append("low")
+		else:
+			fl.append("mid")
+			
+		self.features = fl
+		
+
 
 #########################
 #	Utility Functions	#

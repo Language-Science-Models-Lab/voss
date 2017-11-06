@@ -48,6 +48,8 @@ class Word():
 			self.percept = None
 			self.vowel = None
 			
+			
+			
 					
 		
 	def __str__(self):
@@ -55,9 +57,13 @@ class Word():
 		return name
 		
 		
+		
+		
 
 	def __repr__(self):
 		return self.id
+		
+		
 		
 		
 
@@ -65,9 +71,13 @@ class Word():
 		self.percept = percept
 		
 		
+		
+		
 
 	def set_vowel(self, vowel):
 		self.vowel = vowel	 
+		
+		
 		
 		
 
@@ -134,6 +144,7 @@ class Word():
 		
 		c1 = P(fm[onset])
 		c2 = P(fm[coda])
+		nfl = n_nuc.features
 		ofl = c1.features
 		cfl = c2.features
 		
@@ -142,18 +153,26 @@ class Word():
 		#morphable_features = ["stop", "voiced", "fricative", "spread"] 
 		morph_chance = 50
 		
+		#onset transformations (coart)
 		for of in ofl:
 			ofns = c1.articulations
 			of_nuc = ofns[of]((onset, n_nuc, coda), 0, True)
 			n_nuc = of_nuc
-								
-
+		
+		#nucleus production noise (art)
+		for nf in nfl:
+			nf_nuc = ofns[nf]((onset, n_nuc, coda), 1, True)
+			n_nuc = nf_nuc
+		
+		#coda transformations (coart)
 		for cf in cfl:
 			cfns = c2.articulations
 			cf_nuc = cfns[cf]( (onset, n_nuc, coda), 2, True)
 			n_nuc = cf_nuc
 			
 		return n_nuc
+		
+		
 		
 		
 		
@@ -176,6 +195,8 @@ class Word():
 		form = Word(onset_cc, nuc, coda_cc, self.percept, self.noise)
 		
 		return form
+
+
 
 
 
@@ -215,6 +236,8 @@ class Word():
 			nucleus = cfns[cf]( (onset, nuc, coda), 2, True)
 			
 		return nucleus
+		
+		
 		
 		
 	
@@ -279,6 +302,8 @@ class Word():
 		return new_v
 		
 		
+		
+		
 
 	def circle_range(self, x, h, k, r):
 		a = (x-h)**2
@@ -286,6 +311,8 @@ class Word():
 		ceiling = (c - a)**(.5) + k
 		floor =	 2.0*k - ceiling
 		return (ceiling, floor)
+		
+		
 		
 		
 
@@ -317,6 +344,9 @@ class Word():
 				self.vowel_hist.append( (v, counts) )
 
 
+
+
+
 	def has_record(self, v):
 		'''
 		v is a Vowel
@@ -330,6 +360,10 @@ class Word():
 				return True
 		return False
 
+
+
+
+
 	
 	def vowel_record_i(self, v):
 		for i in range(len(self.vowel_hist)):
@@ -337,6 +371,10 @@ class Word():
 			if v is p:
 				return i
 		return None
+	
+	
+	
+	
 	
    
 	def merge_absorb(self, wv, sv):
@@ -369,6 +407,10 @@ class Word():
 			print("error report:", wv, "not in history:")
 			for v, c in self.vowel_hist:
 				print(v, c)
+				
+				
+				
+				
 
 	def merge_absorb_rb(self, wv, sv):
 		'''
@@ -383,6 +425,10 @@ class Word():
 			counts = self.vowel_hist[wv]
 			self.vowel_hist[sv] += counts
 			self.vowel_hist[wv] = 0
+
+
+
+
 
 	def merge_midpoint(self, v1, v2, mv):
 		'''
