@@ -1,6 +1,6 @@
 '''Vowel evolution program.
 Run with Convention, Prototype, Game_fns, Vowel
-Last update July 2017 HJMS'''
+Last update November 2017 HJMS'''
 
 
 #For now, these are just arbitrary numbers, but that may change
@@ -52,7 +52,7 @@ class Agent:
 		self.wall_bias = True
 		self.adaptive = adapt #defunct
 		self.prestige = prestige #defunct
-		
+		self.pot_spreadables = ["nasal", "labial", "rounded"]
 
 
 	def set_phone_radius(self, prod):
@@ -68,7 +68,7 @@ class Agent:
 	def print_vocab(self):
 		words = self.idio.values()
 		if (not words):
-			print("(baby)")
+			print("(Baby--no vocabulary yet)")
 		else:
 			print("\n{0:25}\t{1:14}\t{2:15}".format("Word", "Agent's Vowel", "Formant Values"))
 			for w in sorted(words, key=lambda w: w.id):
@@ -190,7 +190,7 @@ class Agent:
 
 
 	def purge_vwls(self):
-		self.weigh_vowels()
+		#self.weigh_vowels()
 		vocab = self.idio.values()
 		dist_vwls = set([w.percept for w in vocab])
 		#rep = [v for v in self.repertoire if v.weight > 0]
@@ -241,6 +241,7 @@ class Agent:
 				print("adds", v, "to repertoire", end=" ")
 				
 		else: #known vowel
+			v.weight += .001 #crude priming
 			if self.chosen: #micro view printing 
 				print("matches vowel to", v, end=" ")
 			
@@ -261,10 +262,13 @@ class Agent:
 
 
 	def call_matchers(self, w):
-		'''Match the vowel, then the word if age > 0'''
+		'''
+		Match the vowel, then the word if age > 0
+		This is the method used if 'armchair mode' is on
+		'''
 		#speaker uses the word 
 		formed_word = w.get_form() #word object; may be an alternation
-		inc_vwl = formed_word.get_vowel() #vowel object; with assimilation
+		inc_vwl = formed_word.get_vowel() #vowel object; assimilation 
 		
 		#listener processes the word
 		corr_vwl = self.dissimilate( (w.onset, inc_vwl, w.coda) )
@@ -274,29 +278,35 @@ class Agent:
 		
 		#if no match was found, babies will expand their repertoire
 		if v is None: 
+			
 			if self.age < 1:	#new vowel
 				#? should babies use corr_vwl or inc_vwl?
+				#^This is why we need intelligent agents in a MAS...
 				v = self.guess_by_margin(corr_vwl)	 #generate an imitation within margin
-				self.add_vowel(v)					#add vowel to rep
+				self.add_vowel(v)					 #add vowel to rep
 				if self.chosen:
 					print("adds", v, "to repertoire", end=" ")
-			else:
+					
+			else: #Agent couldn't find a match, but isn't a baby (not good)
 				whole_rep = [phone for phone in self.repertoire]
-				print("*Something's not right in 'Agent.call_matchers()'")
+				#print("*Something's not right in 'Agent.call_matchers()'")
 				print("*Agent couldn't find a match for", corr_vwl)
 				v = self.rec_vowel_match(corr_vwl, whole_rep)[0] #nothing matched the length
 				print("*Found possible match", v, ". Check phonology coarticulation functions.")
+				
 		else: #known vowel
+			
 			if self.chosen: #micro view printing 
 				print("matches vowel to", v, end=" ")
+				
 #BABIES WEIGHING VOWELS
 			if self.age < 1:
-				v.weight += .1
+				v.weight += .001
 				if self.prox_margin:
-					t0 = datetime.datetime.now()
+					#t0 = datetime.datetime.now()
 					self.settle_conflicts()
-					t1 = datetime.datetime.now()
-					dif = t1 - t0
+					#t1 = datetime.datetime.now()
+					#dif = t1 - t0
 					#print(dif)
 			
 		if self.age > 0:				#baby--agents under 1 only hear the vowel
@@ -312,6 +322,7 @@ class Agent:
 			if self.adaptive:
 				print( "\nPerception = {0:.4f}".format(self.perception), end=" ")
 		return v
+
 
 
 
@@ -343,11 +354,15 @@ class Agent:
 			print( "\nPerception = {0:.4f}".format(self.perception), end=" ")
 		return v
 
+
+
 	
 
 	def add_vowel(self, v):
 		#work-around just appends vowel directly without filtering
 		self.append_vowel(v)
+
+
 
 
 
@@ -367,6 +382,8 @@ class Agent:
 			return self.vowel_match_rb(v)
 		else:
 			return self.vowel_match_armchair(v)
+
+
 
 
 
@@ -412,7 +429,9 @@ class Agent:
 		return best_phone
 
 				
-				
+
+
+
 	def no_homo(self, phone, w):
 		'''
 		True when adding the word with phone as nucleus would NOT create a homophone
@@ -441,11 +460,15 @@ class Agent:
 		return True
 
 
-	
+
+
+
 	def length_matcher(self, incom_v, intern_p):
 		diff = abs(incom_v.length - intern_p.length)
 		ld = diff <= (intern_p.length * .5) #signal length is within 50% difference of phone length
 		return ld
+			
+			
 			
 			
 			
@@ -585,7 +608,7 @@ class Agent:
 				print(", adds", w.id, "to vocabulary", end="")
 				
 		#update weights
-		self.weigh_vowels()
+		#self.weigh_vowels()
 		
 #uncomment both of these to reinstate conflict resolution
 		#self.settle_conflicts()
@@ -1031,27 +1054,51 @@ class Agent:
 
 		This 'undoes' the supposed adjustment forced on a unit via assimilate()
 
-		returns the modified vowel
+		*As of 3.9, this also includes feature spreading
+		
+		Returns the modified vowel
 		'''
 		import Phonology
+		import random
 		P = Phonology.Phonology
 		fm = Phonology.get_feature_dict() #consonant compensation methods (feature matrix)
-		
+		ps = self.pot_spreadables
 		onset, nucleus, coda = syllable
-		nuc =nucleus.cc()
+		nuc = nucleus.cc()
 		c1 = P(fm[onset.name])
 		c2 = P(fm[coda.name])
-		ofl = onset.features
-		nfl = nuc.features
-		cfl = coda.features
+		
+		spread_chance = random.randint(0, 99)
+	
+		ofl = [f for f in onset.features]
+
+		nfl = [f for f in nuc.features]
+		
+		onset_spreadables = [feat for feat in ofl if feat in ps and spread_chance < 25]
+		if onset_spreadables:
+			spreader = random.choice(onset_spreadables)
+			if spreader not in nfl:
+				ofl.remove(spreader)
+				nfl.append(spreader)
+				#print(spreader, "spread from onset to nucleus")
+				
+		cfl = [f for f in coda.features]
+		coda_spreadables = [feat for feat in cfl if feat in ps and spread_chance > 75]
+		if coda_spreadables:
+			spreader = random.choice(coda_spreadables)
+			if spreader not in nfl:
+				cfl.remove(spreader)
+				nfl.append(spreader)
+				#print(spreader, "spread from coda to nucleus")
 		
 		for of in ofl:
 			ofns = c1.articulations
 			nuc = ofns[of]( (onset, nuc, coda), 0, False)
 					
 		for nf in nfl:
-			nf_nuc = ofns[nf]((onset, n_nuc, coda), 1, False)
-			n_nuc = nf_nuc
+			ofns = c1.articulations
+			nf_nuc = ofns[nf]((onset, nuc, coda), 1, False)
+			nuc = nf_nuc
 			
 		for cf in cfl:
 			cfns = c2.articulations

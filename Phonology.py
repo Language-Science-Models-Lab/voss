@@ -4,7 +4,7 @@ Run in PYTHON 3(!)
 with Vowel, Game_fns, Prototype, Word, Agent, Convention, graphics files in same directory
 
 import time, random, re from Python library
-Last update October 2017 HJMS
+Last update November 2017 HJMS
 
 
 SYLLABLES		

@@ -564,25 +564,33 @@ class Convention:
 
 
 
-    def get_word_prototype(self, vl, p_name):
+    def get_word_prototype(self, vg, p_name):
         '''
         Find the prototype of a word by averaging its pronunciation
         among all agents.
-        vl is a list of Vowels (tokens)
+        vg is a generator of Vowels (tokens)
         w_id is the ID tag of the Word we are updating
         '''
+        	
         P = Prototype.Prototype
-        c = len(vl)
-        if c:
-            e1_avg = (sum( [v.e1 for v in vl] ) / c)
-            e2_avg = (sum( [v.e2 for v in vl] ) / c)
-            l_avg = (sum( [v.length for v in vl] ) / c)
-            proto = P(e1_avg, e2_avg, l_avg, p_name)
-            proto.carriers = c
-            return proto
-        else:
-            print("error in get_word_prototype:", vl, w_id)
-    
+        
+        e1_sum = 0
+        e2_sum = 0
+        l_sum = 0
+        nc = 0 #number of carriers
+        for v in vg:
+        	nc += 1
+        	e1_sum += v.e1
+        	e2_sum += v.e2
+        	l_sum += v.length
+        	
+        e1_avg = (e1_sum / nc)
+        e2_avg = (e2_sum / nc)
+        l_avg = ( l_sum / nc)
+        proto = P(e1_avg, e2_avg, l_avg, p_name)
+        proto.carriers = nc
+        return proto
+        
 
 
     def group_word_protos(self, radius, pl):

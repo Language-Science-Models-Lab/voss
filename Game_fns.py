@@ -3,13 +3,13 @@ Vowel evolution program driver.
 Run in PYTHON 3 (!)
 with Vowel, Prototype, Word, Agent, Convention, graphics files in same directory
 import time, random, re from Python library
-Last update July 2017 HJMS
+Last update November 2017 HJMS
 
 HOW TO RUN
 Use 'run' (f5) from IDLE, or
 execute this file while the others^ are in same directory, or use
 $python3 Game_fns.py
- in Linux. 
+ in Linux. (Using the terminal is much faster)
 Python3 and TKinter must be installed
 
 The menu will print defaults and the commands you can enter at the prompt.
@@ -53,6 +53,9 @@ class Game_fns:
 		self.phone_radius_noise = 0.25			#margin within which agents produce their internal representation when speaking
 		self.prox = -1						   #controls the sensitivity of vowels in agent's reps
 		#PROX NOTE: prox is in ERB units and is added to vowel.weight
+		self.num_adults = self.anc_group_size
+		self.num_children = 0
+		self.num_babies = 0
 		
 		self.adapt_perc = 0						#amount agents modify perception from feedback (0 will disable)
 		self.social = 0							#social prestige ranking levels (0 will diable)
@@ -78,7 +81,7 @@ class Game_fns:
 		self.fam_size = 1
 		self.micro = False
 		self.micro_agent = None
-		self.num_repeats = 4 #MULTIPLE INTERACTIONS PER FAM MEMBER
+		self.num_repeats = 20 #MULTIPLE INTERACTIONS PER FAM MEMBER
 		
 
 		self.sample_report = self.percept_sampling
@@ -90,6 +93,7 @@ class Game_fns:
 		self.str_buf = []
 		
 		self.armchair_var = False
+	
 		
 		'''
 		SOME NOTES ON THE MARGIN MECHANICS
@@ -175,6 +179,7 @@ class Game_fns:
 		languages["arrernte"] = "retracted_a, schwa"
 		languages["finnish"] = "i, i:, y, y:, u, u:, e, e:, o_slash, o_slash:, epsilon, epsilon:, a, a:, u, u:, o, o:"
 		languages["karaja"] = "i, I, e, epsilon, wedge, barred_i, retracted_a, open_o, o, horseshoe, u"
+		languages["hidatsa"] = "i, u, i:, u:, e:, o:, a, a:"
 		#languages["yourlanguage"] = ""
 		
 
@@ -266,8 +271,11 @@ class Game_fns:
 			#assign constant "nuclear family" to baby
 			for baby in babies:
 				baby.fam = sample(pot_fam, fam_size)
-
-
+		
+		self.num_adults = sum([len(g) for g in self.population if g[0].age >= self.age_adult])
+		self.num_babies = len(self.population[-1])
+		self.num_children = self.total_agents - (self.num_adults + self.num_babies)
+		self.num_learners = self.num_babies + self.num_children
 				
 	def diffuse(self):	  
 		'''
@@ -280,7 +288,7 @@ class Game_fns:
 
 		proto_list = c.proto_dict.keys()
 		adult_age = int(self.age_limit/10)+1
-		children = [g for g in self.population if g[0].age < adult_age]
+		children = (g for g in self.population if g[0].age < adult_age)
 		ta = self.total_agents
 		rpt = self.num_repeats  #MULTIPLE INTERACTIONS PER FAM MEMBER
 
@@ -294,7 +302,8 @@ class Game_fns:
 			#something has gone wrong; probably crazy parameters used
 			print("The language has died--agents were unable to pass on the lexicon.")
 			print("If you could please save and send your shell session or parameter values to")
-			print(" hannahjmscott@gmail.com , the developer will be super grateful and reply with a funny picture or something.")
+			print(" hannahjmscott@gmail.com ")
+			print("the developer will be super grateful and reply with a funny picture or something.")
 			self.curr_cycle = self.num_cycles+1
 			return	
 
@@ -302,7 +311,7 @@ class Game_fns:
 		cw = self.contact_words
 		
 		s_keys = [s for s in s.keys()]
-		sample_size = int(min([self.lex_size, (len(s_keys)/4), ca ]))
+		sample_size = int(min([self.lex_size, (len(s_keys)/4), ca]))
 		
 		t = self.transmit
 		#iterate through population
@@ -314,7 +323,6 @@ class Game_fns:
 				#get sample_size random words from population
 				random_speakers = sample(s_keys, sample_size)
 					
-#
 				#random_words = [sample(s[rsp], min([len(s[rsp]), cw]) ) for rsp in random_speakers if len(s[rsp])]
 				#cw is the limit on how many words to get (0 for the whole vocab)
 				random_words = ( self.sample_agent_words(s[rsp], cw) for rsp in random_speakers if len(s[rsp]))
@@ -334,6 +342,7 @@ class Game_fns:
 				
 				#get "family" input
 				family = [f for f in a.family if f in s]
+				
 				#replace the dead family members (after a brief moment of respectful silence)
 				if len(family) < self.fam_size:
 					dead = self.fam_size - len(family)
@@ -374,6 +383,8 @@ class Game_fns:
 			return vg
 		return None
 
+
+
 	
 
 	def get_sampling(self):
@@ -395,6 +406,8 @@ class Game_fns:
 
 	
 
+
+
 	def transmit(self, agent, n):
 		'''signals a word n to agent'''
 		self.total_interactions += 1
@@ -403,6 +416,8 @@ class Game_fns:
 		else:
 			im = agent.call_matchers_nh(n)
 		return
+
+
 
 	
 
@@ -425,6 +440,8 @@ class Game_fns:
 			chosen.chosen = False
 			self.micro_agent = None
 
+			
+			
 			
 
 	def charon(self):
@@ -469,6 +486,8 @@ class Game_fns:
 
 
 
+
+
 	def percept_protos(self, min_age = 0, max_age = 100):
 		'''
 		Gets the average internal representation for each word in lexicon.
@@ -479,17 +498,17 @@ class Game_fns:
 		This updates the Convention's proto_dict.
 		'''
 		c = self.convention
-		adult = self.age_adult
-		adults = [g for g in self.population if g[0].age > 1]
+		
+		agents = [g for g in self.population if g[0].age > min_age]
+		
 		pd = c.proto_dict
 		adult_vowels = []
 		lex = c.lexicon.items()
 		for (w_id, word) in lex:
 			nuc = word.nucleus
-			word_vowels = [a.idio[w_id].percept for g in adults for a in g if (w_id in a.idio and a.age > min_age and a.age <= max_age)]
-
+			word_vowels = (a.idio[w_id].percept for g in agents for a in g if w_id in a.idio)
 			if word_vowels:
-				word_proto = c.get_word_prototype(word_vowels, w_id) #, word
+				word_proto = c.get_word_prototype(word_vowels, w_id) # word
 				adult_vowels.append(word_proto)
 			else:
 				print("RIP", word)
@@ -513,14 +532,15 @@ class Game_fns:
 		Accesses the agent's word's vowel, which may be dynamically generated
 		'''
 		c = self.convention
-		adult = self.age_adult
-		adults = [g for g in self.population if g[0].age > 1]
+
+		agents = [g for g in self.population if g[0].age > min_age]
+		
 		#pd = c.proto_dict
 		adult_vowels = []
 		lex = c.lexicon.items()
 		for (w_id, word) in lex:
 			nuc = word.nucleus
-			word_vowels = [(a.idio[w_id]).get_vowel() for g in adults for a in g if (w_id in a.idio and a.age > min_age and a.age <= max_age)]
+			word_vowels = ((a.idio[w_id]).get_vowel() for g in agents for a in g if w_id in a.idio)
 			if word_vowels:
 				word_proto = c.get_word_prototype(word_vowels, w_id) 
 				adult_vowels.append(word_proto)

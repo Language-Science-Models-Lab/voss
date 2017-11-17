@@ -340,6 +340,7 @@ class Word():
 			elif (counts > self.vowel_hist[0][1] ):
 				self.vowel_hist.insert(0, (v, counts) )
 				self.set_percept(v)
+				#print(v, "assigned to", self.id)
 			else:
 				self.vowel_hist.append( (v, counts) )
 
