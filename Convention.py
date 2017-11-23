@@ -279,32 +279,32 @@ class Convention:
         ######## ADD NEW PROTOS BELOW THIS LINE ############
         
         #FRONT
-        new_pro( p_hz(331, 2368, 150, "i") )    #unrounded [i]
+        new_pro( p_hz(331, 2368, 100, "i") )    #unrounded [i]
         new_pro( p_hz(331, 2368, 250, "i:") )    #unrounded [i:]
-        new_pro( p_hz(331, 1968, 150, "y") )       #rounded [y]
+        new_pro( p_hz(331, 1968, 100, "y") )       #rounded [y]
         new_pro( p_hz(331, 1968, 250, "y:") )       #rounded [y:]
         
-        new_pro( p_hz(395, 2034, 150, "I") )  #singleton [I]
+        new_pro( p_hz(395, 2034, 100, "I") )  #singleton [I]
         new_pro( p_hz(395, 2034, 250, "I:") )  #singleton [I:]
-        new_pro( p_hz(395, 1750, 150, "Y") ) #singleton [Y]
+        new_pro( p_hz(395, 1750, 100, "Y") ) #singleton [Y]
         new_pro( p_hz(395, 1750, 250, "Y:") ) #singleton [Y:]
         
-        new_pro( p_hz(462, 2309, 150, "e") )       #unrounded[e]
+        new_pro( p_hz(462, 2309, 100, "e") )       #unrounded[e]
         new_pro( p_hz(462, 2309, 250, "e:") )       #unrounded[e:]
-        new_pro( p_hz(462, 1950, 150, "o_slash") ) #rounded [o_slash] 
+        new_pro( p_hz(462, 1950, 100, "o_slash") ) #rounded [o_slash] 
         new_pro( p_hz(462, 1950, 250, "o_slash:") ) #rounded [o_slash:]
         
-        new_pro( p_hz(622, 2077, 150, "epsilon") )  #unrounded [epsilon]
+        new_pro( p_hz(622, 2077, 100, "epsilon") )  #unrounded [epsilon]
         new_pro( p_hz(622, 2077, 250, "epsilon:") )  #unrounded [epsilon:]
-        new_pro( p_hz(622, 1700, 150, "oe") )   #rounded [oe]
+        new_pro( p_hz(622, 1700, 100, "oe") )   #rounded [oe]
         new_pro( p_hz(622, 1700, 250, "oe:") )   #rounded [oe:]
         
-        new_pro( p_hz(775, 1952, 150, "ae") )      #singleton [ae]
+        new_pro( p_hz(775, 1952, 100, "ae") )      #singleton [ae]
         new_pro( p_hz(775, 1952, 250, "ae:") )      #singleton [ae:]
         
-        new_pro( p_hz(900, 1670, 150, "a") )       #unrounded [a]
+        new_pro( p_hz(900, 1670, 100, "a") )       #unrounded [a]
         new_pro( p_hz(900, 1670, 250, "a:") )       #unrounded [a:]
-        new_pro( p_hz(900, 1470, 150, "OE") ) #[OE]
+        new_pro( p_hz(900, 1470, 100, "OE") ) #[OE]
         new_pro( p_hz(900, 1470, 250, "OE:") ) #[OE:] 
 
 
@@ -1806,7 +1806,10 @@ class Convention:
             else:
                 vname = vname_l[0]
             weight = proto_weights[vname]
-            outer_radius = weight + prox
+            if prox < 0:
+            	outer_radius = weight
+            else:
+            	outer_radius = weight + prox
             e1, e2 = v.e1, v.e2
             prox_e1 = e1 - outer_radius
             perc_e1 = e1 - inner_radius
@@ -1823,10 +1826,9 @@ class Convention:
             prox_circle = Circle(cen_pt, prox_r)
             perc_r = c_y - perc_y
             perc_circle = Circle(cen_pt, perc_r)
-#TURNING PROX OFF WHEN IT'S NEGATIVE
-            if prox > 0:
-                prox_circle.draw(win)
-                ca(prox_circle)
+            
+            prox_circle.draw(win)
+            ca(prox_circle)
                 
             perc_circle.draw(win)
             #perc_circle.setWidth(1.5)

@@ -412,8 +412,9 @@ class Agent:
 		if lf:
 			rep = ((p, vpd(v, p)) for p in self.repertoire if (lm(v, p) and (vpd(v, p) <= perc)) )
 		else:
-			rep = self.repertoire
+			rep = ((p, vpd(v, p)) for p in self.repertoire if (vpd(v, p) <= perc))
 
+		
 		for (phone, d) in rep: 
 			if isa_baby: #pick the closest
 				if d < closest:
@@ -701,7 +702,9 @@ class Agent:
 		'''Determine whether a vowel needs to shift/merge'''
 		
 		#Chance to avoid (shift_away) or merge (merge_abs) 
-		merge_chance = 50
+		merge_chance = 49 
+		#merge_chance = 0 -> merging only
+		#merge_chance = 100 -> shifting only
 		
 		if (v1 in self.repertoire and
 			v2 in self.repertoire):
