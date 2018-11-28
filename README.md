@@ -24,6 +24,8 @@ Running the program
 From the ".../Language-Science-Models-Lab/voss" directory, enter   
 >>python3 Game_fns.py
 
+Alternatively, if you have pypy installed, running pypy3 Game_fns.py is of course faster. 
+
 Using IDLE in Windows/Linux/Mac  
 Open "Game_fns.py".  
 Use the f5 key or "Run > Run Module" from the menu. 
