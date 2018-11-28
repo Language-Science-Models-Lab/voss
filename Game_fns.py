@@ -1266,7 +1266,7 @@ class Game_fns:
 		print(s4)
 
 		s6 = "-LANGUAGE  ({0})".format(self.lang_fn)
-		print(s6, "  (-CHARTS to view all)")
+		print(s6)#, "  (-CHARTS to view all)")
 		
 		s5 = "\nBASE CONVENTION\n"+self.base+"\n"
 		print(s5)
