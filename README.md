@@ -30,7 +30,7 @@ Use the f5 key or "Run > Run Module" from the menu.
 
 The command menu will show in the terminal or IDLE shell. 
 Use "run" to run a simulation using the default parameters. 
-Use "demo" to get a walk-through and setthe various parmeters. 
+Use "demo" to get a walk-through and setthe various parameters. 
 
 Setting up simulations
 (There is a much longer, more detailed file available on request
